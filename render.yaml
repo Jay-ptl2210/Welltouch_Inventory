@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: welltouch-inventory
+    env: node
+    buildCommand: npm run render-build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: CLIENT_URL
+        fromService:
+          type: web
+          name: welltouch-inventory
+          property: url
+

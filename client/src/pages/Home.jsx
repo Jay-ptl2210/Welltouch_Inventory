@@ -1,0 +1,98 @@
+import React, { useState, useEffect } from 'react';
+import { getDashboard } from '../services/api';
+
+function Home() {
+  const [dashboardData, setDashboardData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadDashboard();
+  }, []);
+
+  const loadDashboard = async () => {
+    try {
+      setLoading(true);
+      const response = await getDashboard();
+      setDashboardData(response.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load dashboard data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <span className="block sm:inline">{error}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-3xl font-bold text-gray-800 mb-6">Inventory Dashboard</h2>
+        <p className="text-gray-600 mb-6">Current stock levels for all products</p>
+        
+        {dashboardData.length === 0 ? (
+          <div className="text-center py-12">
+            <svg
+              className="mx-auto h-12 w-12 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+              />
+            </svg>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">No products</h3>
+            <p className="mt-1 text-sm text-gray-500">Get started by adding a new product.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {dashboardData.map((item, index) => (
+              <div
+                key={index}
+                className="bg-gradient-to-br from-primary-50 to-primary-100 rounded-lg p-6 shadow-md hover:shadow-xl transition-shadow border border-primary-200"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 truncate">{item.name}</h3>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Size:</span>
+                    <span className="text-sm font-medium text-gray-800">{item.size}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-primary-200">
+                    <span className="text-sm font-medium text-gray-700">Quantity:</span>
+                    <span className="text-xl font-bold text-primary-700">
+                      {item.quantity.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default Home;
