@@ -11,10 +11,7 @@ const connectDB = async () => {
       process.exit(1);
     }
 
-    const conn = await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const conn = await mongoose.connect(mongoURI);
 
     console.log(`MongoDB Atlas Connected: ${conn.connection.host}`);
     console.log(`Database: ${conn.connection.name}`);
