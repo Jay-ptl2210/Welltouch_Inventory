@@ -1,6 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { getDashboard } from '../services/api';
 
+const toCounts = (product) => {
+  const packetsPerLinear = Number(product.packetsPerLinear) || 0;
+  const pcsPerPacket = Number(product.pcsPerPacket) || 0;
+  const pcs = Number(product.quantity) || 0;
+
+  if (packetsPerLinear > 0 && pcsPerPacket > 0) {
+    const packets = pcsPerPacket > 0 ? pcs / pcsPerPacket : 0;
+    const linears = (packetsPerLinear > 0 && pcsPerPacket > 0)
+      ? pcs / (packetsPerLinear * pcsPerPacket)
+      : 0;
+    return { pcs, packets, linears, hasRatios: true };
+  }
+
+  return { pcs, packets: null, linears: null, hasRatios: false };
+};
+
 function Home() {
   const [dashboardData, setDashboardData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,11 +95,42 @@ function Home() {
                     <span className="text-sm text-gray-600">Size:</span>
                     <span className="text-sm font-medium text-gray-800">{item.size}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t border-primary-200">
-                    <span className="text-sm font-medium text-gray-700">Quantity:</span>
-                    <span className="text-xl font-bold text-primary-700">
-                      {item.quantity.toFixed(2)}
-                    </span>
+                  <div className="flex flex-col space-y-1 pt-2 border-t border-primary-200">
+                    {(() => {
+                      const counts = toCounts(item);
+                      if (counts.hasRatios) {
+                        return (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium text-gray-700">Linear / Packets / Pcs:</span>
+                              <span className="text-sm font-bold text-primary-700">
+                                {counts.linears.toFixed(2)} / {counts.packets.toFixed(2)} / {counts.pcs.toFixed(2)}
+                              </span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs text-gray-600">
+                              <span>Packets/Linear:</span>
+                              <span className="font-medium text-gray-800">{item.packetsPerLinear}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs text-gray-600">
+                              <span>Pcs/Packet:</span>
+                              <span className="font-medium text-gray-800">{item.pcsPerPacket}</span>
+                            </div>
+                          </>
+                        );
+                      }
+
+                      return (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-700">Pcs:</span>
+                            <span className="text-sm font-bold text-primary-700">
+                              {counts.pcs.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="text-xs text-red-600 mt-1">Add packets/linear and pcs/packet to view conversions.</div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

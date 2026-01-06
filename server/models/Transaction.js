@@ -20,12 +20,23 @@ const transactionSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  unit: {
+    type: String,
+    required: true,
+    enum: ['linear', 'packet', 'pcs'],
+    default: 'pcs'
+  },
   type: {
     type: String,
     required: true,
     enum: ['produce', 'delivered']
   },
   quantity: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  quantityInPcs: {
     type: Number,
     required: true,
     min: 0

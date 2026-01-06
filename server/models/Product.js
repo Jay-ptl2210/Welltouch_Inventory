@@ -12,14 +12,26 @@ const productSchema = new mongoose.Schema({
     trim: true
   },
   quantity: {
+    // Stored in pieces as the base unit
     type: Number,
     required: true,
     default: 0,
     min: 0
   },
   previousStock: {
+    // Stored in pieces
     type: Number,
     default: 0,
+    min: 0
+  },
+  packetsPerLinear: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  pcsPerPacket: {
+    type: Number,
+    required: true,
     min: 0
   },
   user: {

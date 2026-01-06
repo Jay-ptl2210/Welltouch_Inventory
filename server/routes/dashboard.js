@@ -19,10 +19,22 @@ router.get('/', protect, async (req, res) => {
         dashboardMap[key] = {
           name: product.name,
           size: product.size,
-          quantity: 0
+          quantity: 0,
+          packetsPerLinear: product.packetsPerLinear || 0,
+          pcsPerPacket: product.pcsPerPacket || 0
         };
       }
+
+      // Sum quantities (already stored in pcs)
       dashboardMap[key].quantity += product.quantity;
+
+      // Prefer a non-zero conversion factor if available
+      if (!dashboardMap[key].packetsPerLinear && product.packetsPerLinear) {
+        dashboardMap[key].packetsPerLinear = product.packetsPerLinear;
+      }
+      if (!dashboardMap[key].pcsPerPacket && product.pcsPerPacket) {
+        dashboardMap[key].pcsPerPacket = product.pcsPerPacket;
+      }
     });
 
     const dashboard = Object.values(dashboardMap);

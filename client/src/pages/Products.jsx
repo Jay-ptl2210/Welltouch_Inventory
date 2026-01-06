@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { getProducts } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { getProducts, updateProduct, deleteProduct } from '../services/api';
 
 function Products() {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    size: '',
+    packetsPerLinear: '',
+    pcsPerPacket: '',
+    quantity: '',
+    quantityUnit: 'pcs'
+  });
   const [filters, setFilters] = useState({
     name: '',
     size: ''
@@ -20,11 +33,94 @@ function Products() {
       const response = await getProducts();
       setProducts(response.data);
       setError(null);
+      setMessage({ type: '', text: '' });
     } catch (err) {
       setError('Failed to load products');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startEdit = (product) => {
+    setEditingId(product._id || product.id);
+    setEditForm({
+      name: product.name,
+      size: product.size,
+      packetsPerLinear: (product.packetsPerLinear ?? '').toString(),
+      pcsPerPacket: (product.pcsPerPacket ?? '').toString(),
+      quantity: product.quantity.toString(),
+      quantityUnit: 'pcs'
+    });
+    setMessage({ type: '', text: '' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditForm({
+      name: '',
+      size: '',
+      packetsPerLinear: '',
+      pcsPerPacket: '',
+      quantity: '',
+      quantityUnit: 'pcs'
+    });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSave = async (id) => {
+    try {
+      setSaving(true);
+      setMessage({ type: '', text: '' });
+
+      const payload = {
+        name: editForm.name,
+        size: editForm.size,
+        packetsPerLinear: parseFloat(editForm.packetsPerLinear) || 0,
+        pcsPerPacket: parseFloat(editForm.pcsPerPacket) || 0,
+        quantity: parseFloat(editForm.quantity) || 0,
+        quantityUnit: editForm.quantityUnit
+      };
+
+      await updateProduct(id, payload);
+      setMessage({ type: 'success', text: 'Product updated successfully' });
+      setEditingId(null);
+      await loadProducts();
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.error || 'Failed to update product'
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this product?')) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setMessage({ type: '', text: '' });
+      await deleteProduct(id);
+      setMessage({ type: 'success', text: 'Product deleted successfully' });
+      await loadProducts();
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: err.response?.data?.error || 'Failed to delete product'
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -48,6 +144,15 @@ function Products() {
 
   const uniqueProductNames = [...new Set(products.map(p => p.name))];
   const uniqueSizes = [...new Set(products.map(p => p.size))];
+
+  const toCounts = (product) => {
+    const packetsPerLinear = Number(product.packetsPerLinear) || 0;
+    const pcsPerPacket = Number(product.pcsPerPacket) || 0;
+    const pcs = Number(product.quantity) || 0;
+    const packets = pcsPerPacket > 0 ? pcs / pcsPerPacket : 0;
+    const linears = packetsPerLinear > 0 && pcsPerPacket > 0 ? pcs / (packetsPerLinear * pcsPerPacket) : 0;
+    return { pcs, packets, linears };
+  };
 
   if (loading) {
     return (
@@ -73,7 +178,28 @@ function Products() {
             <h2 className="text-xl md:text-3xl font-bold text-gray-800 mb-1 md:mb-2">Products</h2>
             <p className="text-sm md:text-base text-gray-600">View and manage all products in your inventory</p>
           </div>
+          <div className="mt-3 md:mt-0">
+            <button
+              type="button"
+              onClick={() => navigate('/add-product')}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              Add Product
+            </button>
+          </div>
         </div>
+
+        {message.text && (
+          <div
+            className={`mb-3 md:mb-4 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded ${
+              message.type === 'success'
+                ? 'bg-green-100 border border-green-400 text-green-700'
+                : 'bg-red-100 border border-red-400 text-red-700'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-4 md:mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 overflow-hidden">
@@ -150,41 +276,123 @@ function Products() {
                     Size
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Current Stock
+                    Stock (Linear / Packets / Pcs)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Previous Stock
+                    Packets per Linear
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Pcs per Packet
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredProducts.map((product) => {
-                  const stockStatus = product.quantity === 0 
-                    ? 'out-of-stock' 
-                    : product.quantity < 10 
-                    ? 'low-stock' 
+                  const counts = toCounts(product);
+                  const stockStatus = counts.pcs === 0
+                    ? 'out-of-stock'
+                    : counts.pcs < 10
+                    ? 'low-stock'
                     : 'in-stock';
                   
+                  const isEditing = editingId === (product._id || product.id);
+
                   return (
                     <tr key={product._id || product.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="name"
+                            value={editForm.name}
+                            onChange={handleEditChange}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          />
+                        ) : (
+                          <div className="text-sm font-medium text-gray-900">{product.name}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{product.size}</div>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            name="size"
+                            value={editForm.size}
+                            onChange={handleEditChange}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-500">{product.size}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">
-                          {product.quantity.toFixed(2)}
-                        </div>
+                        {isEditing ? (
+                          <div className="flex items-center space-x-2">
+                            <select
+                              name="quantityUnit"
+                              value={editForm.quantityUnit}
+                              onChange={handleEditChange}
+                              className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                            >
+                              <option value="linear">Linear</option>
+                              <option value="packet">Packets</option>
+                              <option value="pcs">Pieces</option>
+                            </select>
+                            <input
+                              type="number"
+                              name="quantity"
+                              step="0.01"
+                              min="0"
+                              value={editForm.quantity}
+                              onChange={handleEditChange}
+                              className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                            />
+                          </div>
+                        ) : (
+                          <div className="text-sm font-semibold text-gray-900">
+                            {`${counts.linears.toFixed(2)} / ${counts.packets.toFixed(2)} / ${counts.pcs.toFixed(2)}`}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">
-                          {product.previousStock ? product.previousStock.toFixed(2) : '0.00'}
-                        </div>
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            name="packetsPerLinear"
+                            step="0.01"
+                            min="0"
+                            value={editForm.packetsPerLinear}
+                            onChange={handleEditChange}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-500">
+                            {product.packetsPerLinear}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isEditing ? (
+                          <input
+                            type="number"
+                            name="pcsPerPacket"
+                            step="1"
+                            min="0"
+                            value={editForm.pcsPerPacket}
+                            onChange={handleEditChange}
+                            className="w-24 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
+                          />
+                        ) : (
+                          <div className="text-sm text-gray-500">
+                            {product.pcsPerPacket}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -202,6 +410,45 @@ function Products() {
                             ? 'Low Stock'
                             : 'In Stock'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
+                        {isEditing ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleSave(product._id || product.id)}
+                              disabled={saving}
+                              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+                            >
+                              {saving ? 'Saving...' : 'Save'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(product)}
+                              className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(product._id || product.id)}
+                              disabled={saving}
+                              className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );

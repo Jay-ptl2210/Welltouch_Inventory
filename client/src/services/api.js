@@ -77,10 +77,14 @@ export const getCurrentUser = () => api.get('/auth/me');
 // Products API
 export const getProducts = () => api.get('/products');
 export const addProduct = (product) => api.post('/products', product);
+export const updateProduct = (id, product) => api.put(`/products/${id}`, product);
+export const deleteProduct = (id) => api.delete(`/products/${id}`);
 
 // Transactions API
 export const getTransactions = () => api.get('/transactions');
 export const addTransaction = (transaction) => api.post('/transactions', transaction);
+export const updateTransaction = (id, transaction) => api.put(`/transactions/${id}`, transaction);
+export const deleteTransaction = (id) => api.delete(`/transactions/${id}`);
 
 // Dashboard API
 export const getDashboard = () => api.get('/dashboard');

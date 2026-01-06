@@ -5,8 +5,10 @@ function AddProduct() {
   const [formData, setFormData] = useState({
     name: '',
     size: '',
-    quantity: 'Linear', // Measurement unit: Linear or pcs
-    previousStock: '0' // Actual numeric quantity
+    packetsPerLinear: '',
+    pcsPerPacket: '',
+    quantity: '',
+    quantityUnit: 'linear' // linear, packet, pcs
   });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
@@ -25,25 +27,28 @@ function AddProduct() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Use previousStock field as the numeric quantity value
       const productData = {
         name: formData.name,
         size: formData.size,
-        quantity: parseFloat(formData.previousStock) || 0, // Use previousStock as the numeric quantity
-        previousStock: parseFloat(formData.previousStock) || 0 // Store the same value in previousStock
+        packetsPerLinear: parseFloat(formData.packetsPerLinear) || 0,
+        pcsPerPacket: parseFloat(formData.pcsPerPacket) || 0,
+        quantity: parseFloat(formData.quantity) || 0,
+        quantityUnit: formData.quantityUnit
       };
       await addProduct(productData);
       setMessage({ type: 'success', text: 'Product added successfully!' });
       setFormData({
         name: '',
         size: '',
-        quantity: 'Linear',
-        previousStock: '0'
+        packetsPerLinear: '',
+        pcsPerPacket: '',
+        quantity: '',
+        quantityUnit: 'linear'
       });
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error.response?.data?.error || 'Failed to add product' 
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.error || 'Failed to add product'
       });
     } finally {
       setLoading(false);
@@ -100,40 +105,78 @@ function AddProduct() {
             />
           </div>
 
-          <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-            <label htmlFor="quantity" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              Measurement Unit <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="quantity"
-              name="quantity"
-              required
-              value={formData.quantity}
-              onChange={handleChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-              style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
-            >
-              <option value="Linear">Linear</option>
-              <option value="pcs">pcs</option>
-            </select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            <div>
+              <label htmlFor="packetsPerLinear" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                Packets per Linear <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="packetsPerLinear"
+                name="packetsPerLinear"
+                required
+                step="0.01"
+                min="0"
+                value={formData.packetsPerLinear}
+                onChange={handleChange}
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                placeholder="e.g., 10"
+              />
+            </div>
+            <div>
+              <label htmlFor="pcsPerPacket" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                Pcs per Packet <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="pcsPerPacket"
+                name="pcsPerPacket"
+                required
+                step="1"
+                min="0"
+                value={formData.pcsPerPacket}
+                onChange={handleChange}
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                placeholder="e.g., 12"
+              />
+            </div>
           </div>
 
-          <div>
-            <label htmlFor="previousStock" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              Quantity <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              id="previousStock"
-              name="previousStock"
-              required
-              step="0.01"
-              min="0"
-              value={formData.previousStock}
-              onChange={handleChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-              placeholder="Enter quantity"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            <div>
+              <label htmlFor="quantityUnit" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                Initial Stock Unit <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="quantityUnit"
+                name="quantityUnit"
+                required
+                value={formData.quantityUnit}
+                onChange={handleChange}
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+              >
+                <option value="linear">Linear</option>
+                <option value="packet">Packets</option>
+                <option value="pcs">Pieces</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="quantity" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                Initial Stock ({formData.quantityUnit === 'linear' ? 'Linears' : formData.quantityUnit === 'packet' ? 'Packets' : 'Pieces'}) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="quantity"
+                name="quantity"
+                required
+                step="0.01"
+                min="0"
+                value={formData.quantity}
+                onChange={handleChange}
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                placeholder="Enter initial stock"
+              />
+            </div>
           </div>
 
           <button

@@ -76,16 +76,6 @@ function Navigation() {
                 Products
               </Link>
               <Link
-                to="/add-product"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/add-product') 
-                    ? 'bg-primary-600 text-white' 
-                    : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-              >
-                Add Product
-              </Link>
-              <Link
                 to="/manage-products"
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive('/manage-products') 
@@ -158,17 +148,6 @@ function Navigation() {
               }`}
             >
               Products
-            </Link>
-            <Link
-              to="/add-product"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/add-product') 
-                  ? 'bg-primary-600 text-white' 
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-              }`}
-            >
-              Add Product
             </Link>
             <Link
               to="/manage-products"
