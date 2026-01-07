@@ -8,6 +8,8 @@ import ManageProducts from './pages/ManageProducts';
 import Products from './pages/Products';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import AddTransaction from './pages/AddTransaction';
+import Reports from './pages/Reports';
 
 function Navigation() {
   const location = useLocation();
@@ -57,33 +59,39 @@ function Navigation() {
             <div className="ml-10 flex items-baseline space-x-4">
               <Link
                 to="/"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/') 
-                    ? 'bg-primary-600 text-white' 
-                    : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
               >
                 Dashboard
               </Link>
               <Link
                 to="/products"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/products') 
-                    ? 'bg-primary-600 text-white' 
-                    : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
               >
                 Products
               </Link>
               <Link
                 to="/manage-products"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive('/manage-products') 
-                    ? 'bg-primary-600 text-white' 
-                    : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/manage-products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
               >
                 Transactions
+              </Link>
+              <Link
+                to="/reports"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/reports')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Reports
               </Link>
               <div className="relative ml-4" ref={userMenuRef}>
                 <button
@@ -130,35 +138,42 @@ function Navigation() {
             <Link
               to="/"
               onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/') 
-                  ? 'bg-primary-600 text-white' 
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-              }`}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/')
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                }`}
             >
               Dashboard
             </Link>
             <Link
               to="/products"
               onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/products') 
-                  ? 'bg-primary-600 text-white' 
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-              }`}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                }`}
             >
               Products
             </Link>
             <Link
               to="/manage-products"
               onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                isActive('/manage-products') 
-                  ? 'bg-primary-600 text-white' 
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-              }`}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                }`}
             >
               Transactions
+            </Link>
+            <Link
+              to="/reports"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                }`}
+            >
+              Reports
             </Link>
             <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
               {user?.email}
@@ -207,6 +222,14 @@ function AppContent() {
               }
             />
             <Route
+              path="/add-transaction"
+              element={
+                <ProtectedRoute>
+                  <AddTransaction />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/products"
               element={
                 <ProtectedRoute>
@@ -219,6 +242,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <ManageProducts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <Reports />
                 </ProtectedRoute>
               }
             />

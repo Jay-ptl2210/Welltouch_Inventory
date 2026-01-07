@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { addProduct } from '../services/api';
 
 function AddProduct() {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     size: '',
@@ -59,14 +61,13 @@ function AddProduct() {
     <div className="max-w-2xl mx-auto">
       <div className="bg-white rounded-lg shadow-lg p-3 md:p-8">
         <h2 className="text-xl md:text-3xl font-bold text-gray-800 mb-4 md:mb-6">Add New Product</h2>
-        
+
         {message.text && (
           <div
-            className={`mb-3 md:mb-4 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded ${
-              message.type === 'success'
+            className={`mb-3 md:mb-4 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded ${message.type === 'success'
                 ? 'bg-green-100 border border-green-400 text-green-700'
                 : 'bg-red-100 border border-red-400 text-red-700'
-            }`}
+              }`}
           >
             {message.text}
           </div>
@@ -179,13 +180,22 @@ function AddProduct() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-lg font-semibold hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
-          >
-            {loading ? 'Adding...' : 'Add Product'}
-          </button>
+          <div className="flex gap-4 mt-6">
+            <button
+              type="button"
+              onClick={() => navigate('/products')}
+              className="flex-1 bg-gray-100 text-gray-700 py-2 md:py-3 px-6 text-sm md:text-base rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors shadow-sm hover:shadow"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-primary-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-lg font-semibold hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+            >
+              {loading ? 'Adding...' : 'Add Product'}
+            </button>
+          </div>
         </form>
       </div>
     </div>
