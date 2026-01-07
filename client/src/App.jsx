@@ -196,6 +196,8 @@ function Navigation() {
 }
 
 function AppContent() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Router
       future={{
@@ -203,9 +205,9 @@ function AppContent() {
         v7_relativeSplatPath: true
       }}
     >
-      <div className="min-h-screen">
+      <div className="min-h-screen flex flex-col">
         <Navigation />
-        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-8 overflow-x-hidden">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-8 overflow-x-hidden flex-grow w-full">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -259,6 +261,25 @@ function AppContent() {
             />
           </Routes>
         </main>
+
+        {/* Footer */}
+        {isAuthenticated && (
+          <footer className="bg-white border-t border-gray-200 mt-auto">
+            <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+              <p className="text-center text-sm text-gray-500">
+                Make and manage by{' '}
+                <a
+                  href="https://jayptlportfolio.netlify.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary-600 hover:text-primary-800 font-medium"
+                >
+                  Jay Patel
+                </a>
+              </p>
+            </div>
+          </footer>
+        )}
       </div>
     </Router>
   );
