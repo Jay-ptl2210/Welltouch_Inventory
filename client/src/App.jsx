@@ -11,6 +11,8 @@ import Register from './pages/Register';
 import AddTransaction from './pages/AddTransaction';
 import Reports from './pages/Reports';
 
+import logo from './assets/logo.png';
+
 function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -52,8 +54,10 @@ function Navigation() {
     <nav className="bg-white shadow-lg sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex-shrink-0">
-            <h1 className="text-2xl font-bold text-primary-700">Welltouch Inventory</h1>
+          <div className="flex-shrink-0 flex items-center">
+            <Link to="/">
+              <img src={logo} alt="Welltouch Inventory" className="h-12 w-auto" />
+            </Link>
           </div>
           <div className="hidden md:block">
             <div className="ml-10 flex items-baseline space-x-4">

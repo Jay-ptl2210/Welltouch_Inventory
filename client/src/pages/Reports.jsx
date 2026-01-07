@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { fromPcs } from '../utils/calculations';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logo from '../assets/logo.png';
 
 function Reports() {
     const [products, setProducts] = useState([]);
@@ -132,14 +133,25 @@ function Reports() {
         const margin = 14;
         const dateStr = format(new Date(), 'dd-MM-yyyy');
 
-        // Title Section
+        // Add Logo
+        const logoWidth = 50;
+        const logoHeight = 25;
+        try {
+            doc.addImage(logo, 'PNG', margin, 10, logoWidth, logoHeight);
+        } catch (e) {
+            console.error("Error adding logo to PDF:", e);
+        }
+
+        // Title Section (Adjusted to be next to logo, vertically centered relative to logo)
         doc.setFontSize(22);
         doc.setTextColor(40, 40, 40);
-        doc.text('Inventory Report', margin, 22);
+        // Logo ends at 10 + 25 = 35. Title at Y=25 looks good roughly centered
+        const titleX = margin + logoWidth + 5;
+        doc.text('Inventory Report', titleX, 25);
 
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Generated on: ${dateStr}`, margin, 32);
+        doc.text(`Generated on: ${dateStr}`, titleX, 32);
 
         let periodStr = 'Period: All Time';
         if (filters.startDate || filters.endDate) {
@@ -147,10 +159,11 @@ function Reports() {
             if (filters.startDate) periodStr += `From ${filters.startDate} `;
             if (filters.endDate) periodStr += `To ${filters.endDate}`;
         }
-        doc.text(periodStr, margin, 38);
+        // Period below the header block
+        doc.text(periodStr, margin, 45);
 
         // Card Layout Settings
-        const startY = 48;
+        const startY = 55;
         const cardGap = 10;
         const colCount = 3;
         const cardWidth = (pageWidth - (margin * 2) - (cardGap * (colCount - 1))) / colCount;
