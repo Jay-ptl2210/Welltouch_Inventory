@@ -116,6 +116,11 @@ function Reports() {
                     pcs: item.deliveredPcs,
                     packets: fromPcs(item.deliveredPcs, 'packet', product),
                     linear: fromPcs(item.deliveredPcs, 'linear', product)
+                },
+                remaining: {
+                    pcs: product.quantity,
+                    packets: fromPcs(product.quantity, 'packet', product),
+                    linear: fromPcs(product.quantity, 'linear', product)
                 }
             };
         });
@@ -167,7 +172,7 @@ function Reports() {
         const cardGap = 10;
         const colCount = 3;
         const cardWidth = (pageWidth - (margin * 2) - (cardGap * (colCount - 1))) / colCount;
-        const cardHeight = 75; // Increased height to fit all details
+        const cardHeight = 95; // Increased height to fit 3 rows
 
         let currentX = margin;
         let currentY = startY;
@@ -320,6 +325,51 @@ function Reports() {
             doc.setFontSize(7);
             doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
+
+            // --- REMAINING Section ---
+            contentY += 20;
+
+            doc.setFontSize(9);
+            doc.setTextColor(37, 99, 235); // Blue-600
+            doc.setFont(undefined, 'bold');
+            doc.text('REMAINING', currentX + 4, contentY);
+            doc.setDrawColor(219, 234, 254); // Blue-100
+            doc.line(currentX + 4, contentY + 1, currentX + 22, contentY + 1);
+
+            contentY += 6;
+            doc.setFontSize(8);
+            doc.setFont(undefined, 'normal');
+            doc.setTextColor(29, 78, 216); // Blue-700
+
+            const rLinear = item.remaining.linear.toFixed(1);
+            const rPackets = item.remaining.packets.toFixed(1);
+            const rPcs = item.remaining.pcs.toFixed(0);
+
+            doc.setFillColor(239, 246, 255); // Blue-50
+            doc.roundedRect(currentX + 4, contentY, colW - 2, 14, 1, 1, 'F');
+            doc.setFont(undefined, 'bold');
+            doc.text(rLinear, currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(7);
+            doc.text('Linear', currentX + 4 + (colW - 2) / 2, contentY + 11, { align: 'center' });
+
+            doc.setFillColor(239, 246, 255);
+            doc.roundedRect(currentX + 4 + colW, contentY, colW - 2, 14, 1, 1, 'F');
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(8);
+            doc.text(rPackets, currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(7);
+            doc.text('Packets', currentX + 4 + colW + (colW - 2) / 2, contentY + 11, { align: 'center' });
+
+            doc.setFillColor(239, 246, 255);
+            doc.roundedRect(currentX + 4 + colW * 2, contentY, colW - 2, 14, 1, 1, 'F');
+            doc.setFont(undefined, 'bold');
+            doc.setFontSize(8);
+            doc.text(rPcs, currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(7);
+            doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
             // Update layout position
             if ((index + 1) % colCount === 0) {
@@ -474,6 +524,28 @@ function Reports() {
                                             <div className="bg-red-50 rounded p-1">
                                                 <div className="font-bold text-red-700">{item.delivered.pcs.toFixed(0)}</div>
                                                 <div className="text-[10px] text-red-600">Pcs</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Remaining */}
+                                    <div>
+                                        <div className="text-xs font-bold text-blue-600 uppercase mb-1 flex items-center">
+                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                            Remaining
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 text-center text-sm">
+                                            <div className="bg-blue-50 rounded p-1">
+                                                <div className="font-bold text-blue-700">{item.remaining.linear.toFixed(1)}</div>
+                                                <div className="text-[10px] text-blue-600">Linear</div>
+                                            </div>
+                                            <div className="bg-blue-50 rounded p-1">
+                                                <div className="font-bold text-blue-700">{item.remaining.packets.toFixed(1)}</div>
+                                                <div className="text-[10px] text-blue-600">Packets</div>
+                                            </div>
+                                            <div className="bg-blue-50 rounded p-1">
+                                                <div className="font-bold text-blue-700">{item.remaining.pcs.toFixed(0)}</div>
+                                                <div className="text-[10px] text-blue-600">Pcs</div>
                                             </div>
                                         </div>
                                     </div>
