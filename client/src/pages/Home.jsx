@@ -23,7 +23,8 @@ function Home() {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     name: '',
-    size: ''
+    size: '',
+    type: ''
   });
 
   const handleFilterChange = (e) => {
@@ -41,6 +42,10 @@ function Home() {
     }
     // Filter by Size (exact match)
     if (filters.size && item.size !== filters.size) {
+      return false;
+    }
+    // Filter by Type
+    if (filters.type && item.type !== filters.type) {
       return false;
     }
     return true;
@@ -113,6 +118,18 @@ function Home() {
                 ))}
               </select>
             </div>
+            <div className="relative">
+              <select
+                name="type"
+                value={filters.type}
+                onChange={handleFilterChange}
+                className="w-full md:w-48 px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none appearance-none bg-white"
+              >
+                <option value="">All Types</option>
+                <option value="ST">Stat (ST)</option>
+                <option value="TF">Tri Fold (TF)</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -147,6 +164,11 @@ function Home() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800 truncate" title={item.name}>{item.name}</h3>
+                  <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${(item.type || 'ST') === 'ST' ? 'bg-blue-100 text-blue-800' :
+                      (item.type === 'TF') ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                    {(item.type || 'ST') === 'ST' ? 'ST' : item.type === 'TF' ? 'TF' : '-'}
+                  </span>
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">

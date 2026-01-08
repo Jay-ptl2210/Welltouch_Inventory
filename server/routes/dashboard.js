@@ -14,11 +14,13 @@ router.get('/', protect, async (req, res) => {
     const dashboardMap = {};
 
     products.forEach(product => {
-      const key = `${product.name}-${product.size}`;
+      const type = product.type || 'ST';
+      const key = `${product.name}-${product.size}-${type}`;
       if (!dashboardMap[key]) {
         dashboardMap[key] = {
           name: product.name,
           size: product.size,
+          type: type,
           quantity: 0,
           packetsPerLinear: product.packetsPerLinear || 0,
           pcsPerPacket: product.pcsPerPacket || 0

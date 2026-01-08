@@ -13,6 +13,7 @@ function Reports() {
     const [filters, setFilters] = useState({
         productName: '',
         size: '',
+        type: '',
         startDate: '',
         endDate: ''
     });
@@ -49,85 +50,91 @@ function Reports() {
     useEffect(() => {
         if (loading) return;
 
-        const filteredTx = transactions.filter(tx => {
-            if (filters.startDate) {
-                const txDate = new Date(tx.date).toISOString().split('T')[0];
-                if (txDate < filters.startDate) return false;
-            }
-            if (filters.endDate) {
-                const txDate = new Date(tx.date).toISOString().split('T')[0];
-                if (txDate > filters.endDate) return false;
-            }
-            if (filters.productName && tx.productName !== filters.productName) return false;
-            if (filters.size && tx.size !== filters.size) return false;
+        // 1. Identify which products to include based on filters
+        const includedProducts = products.filter(p => {
+            if (filters.productName && p.name !== filters.productName) return false;
+            if (filters.size && p.size !== filters.size) return false;
+            if (filters.type && p.type !== filters.type) return false;
             return true;
         });
 
-        const aggregation = {};
+        const report = includedProducts.map(product => {
+            const txsForProduct = transactions.filter(tx =>
+                (tx.product === product._id || tx.productId === product._id) ||
+                (tx.productName === product.name && tx.size === product.size && (tx.productType || 'ST') === (product.type || 'ST'))
+            );
 
-        filteredTx.forEach(tx => {
-            const key = `${tx.productName}|${tx.size}`;
-            if (!aggregation[key]) {
-                aggregation[key] = {
-                    name: tx.productName,
-                    size: tx.size,
-                    producedPcs: 0,
-                    deliveredPcs: 0,
-                    productId: tx.productId
-                };
-            }
-
-            const product = products.find(p => p.name === tx.productName && p.size === tx.size);
-            if (!product) return;
-
-            let qtyInPcs = 0;
-            try {
+            // Helper to get pcs
+            const getPcs = (tx) => {
                 const packetsPerLinear = Number(product.packetsPerLinear) || 0;
                 const pcsPerPacket = Number(product.pcsPerPacket) || 0;
-                const q = Number(tx.quantity);
+                const q = Number(tx.quantity) || 0;
+                if (tx.unit === 'linear') return q * packetsPerLinear * pcsPerPacket;
+                if (tx.unit === 'packet') return q * pcsPerPacket;
+                return q;
+            };
 
-                if (tx.unit === 'linear') qtyInPcs = q * packetsPerLinear * pcsPerPacket;
-                else if (tx.unit === 'packet') qtyInPcs = q * pcsPerPacket;
-                else qtyInPcs = q; // pcs
-            } catch (e) {
-                console.error('Conversion error', e);
-                qtyInPcs = 0;
+            // Calculate Opening Stock (Stock before Start Date)
+            let openingPcs = Number(product.previousStock) || 0;
+            if (filters.startDate) {
+                txsForProduct.forEach(tx => {
+                    const txDate = new Date(tx.date).toISOString().split('T')[0];
+                    if (txDate < filters.startDate) {
+                        const qty = Number(tx.quantityInPcs) || 0;
+                        if (tx.type === 'produce') openingPcs += qty;
+                        else if (tx.type === 'delivered') openingPcs -= qty;
+                    }
+                });
             }
 
-            if (tx.type === 'produce') {
-                aggregation[key].producedPcs += qtyInPcs;
-            } else if (tx.type === 'delivered') {
-                aggregation[key].deliveredPcs += qtyInPcs;
-            }
-        });
+            // Calculate Period Transactions
+            let producedPcs = 0;
+            let deliveredPcs = 0;
+            txsForProduct.forEach(tx => {
+                const txDate = new Date(tx.date).toISOString().split('T')[0];
+                const afterStart = !filters.startDate || txDate >= filters.startDate;
+                const beforeEnd = !filters.endDate || txDate <= filters.endDate;
 
-        const report = Object.values(aggregation).map(item => {
-            const product = products.find(p => p.name === item.name && p.size === item.size);
-            if (!product) return item;
+                if (afterStart && beforeEnd) {
+                    const qty = Number(tx.quantityInPcs) || 0;
+                    if (tx.type === 'produce') producedPcs += qty;
+                    else if (tx.type === 'delivered') deliveredPcs += qty;
+                }
+            });
+
+            const remainingPcs = openingPcs + producedPcs - deliveredPcs;
 
             return {
-                ...item,
+                name: product.name,
+                size: product.size,
+                type: product.type || 'ST',
+                initial: {
+                    pcs: openingPcs,
+                    packets: fromPcs(openingPcs, 'packet', product),
+                    linear: fromPcs(openingPcs, 'linear', product)
+                },
                 produced: {
-                    pcs: item.producedPcs,
-                    packets: fromPcs(item.producedPcs, 'packet', product),
-                    linear: fromPcs(item.producedPcs, 'linear', product)
+                    pcs: producedPcs,
+                    packets: fromPcs(producedPcs, 'packet', product),
+                    linear: fromPcs(producedPcs, 'linear', product)
                 },
                 delivered: {
-                    pcs: item.deliveredPcs,
-                    packets: fromPcs(item.deliveredPcs, 'packet', product),
-                    linear: fromPcs(item.deliveredPcs, 'linear', product)
+                    pcs: deliveredPcs,
+                    packets: fromPcs(deliveredPcs, 'packet', product),
+                    linear: fromPcs(deliveredPcs, 'linear', product)
                 },
                 remaining: {
-                    pcs: product.quantity,
-                    packets: fromPcs(product.quantity, 'packet', product),
-                    linear: fromPcs(product.quantity, 'linear', product)
+                    pcs: remainingPcs,
+                    packets: fromPcs(remainingPcs, 'packet', product),
+                    linear: fromPcs(remainingPcs, 'linear', product)
                 }
             };
         });
 
-        setReportData(report);
+        // Filter out empty results if nothing ever happened with this product and stock is 0
+        setReportData(report.filter(r => r.initial.pcs !== 0 || r.produced.pcs !== 0 || r.delivered.pcs !== 0 || r.remaining.pcs !== 0));
 
-    }, [transactions, products, filters]);
+    }, [transactions, products, filters, loading]);
 
     const downloadPDF = () => {
         if (reportData.length === 0) return;
@@ -147,10 +154,9 @@ function Reports() {
             console.error("Error adding logo to PDF:", e);
         }
 
-        // Title Section (Adjusted to be next to logo, vertically centered relative to logo)
+        // Title Section
         doc.setFontSize(22);
         doc.setTextColor(40, 40, 40);
-        // Logo ends at 10 + 25 = 35. Title at Y=25 looks good roughly centered
         const titleX = margin + logoWidth + 5;
         doc.text('Inventory Report', titleX, 25);
 
@@ -164,7 +170,6 @@ function Reports() {
             if (filters.startDate) periodStr += `From ${filters.startDate} `;
             if (filters.endDate) periodStr += `To ${filters.endDate}`;
         }
-        // Period below the header block
         doc.text(periodStr, margin, 45);
 
         // Card Layout Settings
@@ -172,34 +177,30 @@ function Reports() {
         const cardGap = 10;
         const colCount = 3;
         const cardWidth = (pageWidth - (margin * 2) - (cardGap * (colCount - 1))) / colCount;
-        const cardHeight = 95; // Increased height to fit 3 rows
+        const cardHeight = 95;
 
         let currentX = margin;
         let currentY = startY;
 
         reportData.forEach((item, index) => {
-            // Check for page break
             if (currentY + cardHeight > pageHeight - margin) {
                 doc.addPage();
                 currentY = margin;
             }
 
-            // --- Draw Card Container ---
+            // Draw Card Container
             doc.setDrawColor(220, 220, 220);
             doc.setFillColor(255, 255, 255);
             doc.roundedRect(currentX, currentY, cardWidth, cardHeight, 3, 3, 'FD');
 
-            // --- Header (Product Name & Size) ---
             // Header Background
-            doc.setFillColor(248, 250, 252); // Light gray bg
+            doc.setFillColor(248, 250, 252);
             doc.rect(currentX + 0.5, currentY + 0.5, cardWidth - 1, 14, 'F');
 
             // Product Name
             doc.setFontSize(10);
             doc.setTextColor(30, 41, 59);
             doc.setFont(undefined, 'bold');
-
-            // Truncate name if too long
             let displayName = item.name;
             if (displayName.length > 20) displayName = displayName.substring(0, 18) + '...';
             doc.text(displayName, currentX + 4, currentY + 9);
@@ -212,166 +213,145 @@ function Reports() {
             const sizeWidth = doc.getTextWidth(sizeText) + 4;
             doc.setDrawColor(200, 200, 200);
             doc.setFillColor(255, 255, 255);
-            // Align to right of header
             const sizeX = currentX + cardWidth - sizeWidth - 2;
             doc.roundedRect(sizeX, currentY + 3, sizeWidth, 8, 2, 2, 'FD');
             doc.text(sizeText, sizeX + 2, currentY + 8);
 
-            // --- Content Section Offset ---
+            // Type Badge
+            const typeText = item.type;
+            const typeWidth = doc.getTextWidth(typeText) + 4;
+            if (item.type === 'ST') doc.setFillColor(37, 99, 235);
+            else if (item.type === 'TF') doc.setFillColor(147, 51, 234);
+            else doc.setFillColor(156, 163, 175);
+            const typeX = sizeX - typeWidth - 2;
+            doc.roundedRect(typeX, currentY + 3, typeWidth, 8, 2, 2, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont(undefined, 'bold');
+            doc.text(typeText, typeX + 2, currentY + 8);
+
             let contentY = currentY + 22;
+            const colW = (cardWidth - 8) / 3;
 
             // --- PRODUCED Section ---
             doc.setFontSize(9);
-            doc.setTextColor(22, 163, 74); // Green-600
+            doc.setTextColor(22, 163, 74);
             doc.setFont(undefined, 'bold');
             doc.text('PRODUCED', currentX + 4, contentY);
-
-            // Draw underline
-            doc.setDrawColor(220, 252, 231); // Green-100
+            doc.setDrawColor(220, 252, 231);
             doc.setLineWidth(0.5);
             doc.line(currentX + 4, contentY + 1, currentX + 22, contentY + 1);
 
             contentY += 6;
             doc.setFontSize(8);
             doc.setFont(undefined, 'normal');
-            doc.setTextColor(21, 128, 61); // Green-700
+            doc.setTextColor(21, 128, 61);
 
-            // Grid for details
-            const colW = (cardWidth - 8) / 3;
-
-            // Produced Values
-            const pLinear = item.produced.linear.toFixed(1);
-            const pPackets = item.produced.packets.toFixed(1);
-            const pPcs = item.produced.pcs.toFixed(0);
-
-            // Linear
-            doc.setFillColor(240, 253, 244); // Green-50
+            doc.setFillColor(240, 253, 244);
             doc.roundedRect(currentX + 4, contentY, colW - 2, 14, 1, 1, 'F');
             doc.setFont(undefined, 'bold');
-            doc.text(pLinear, currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.text(item.produced.linear.toFixed(1), currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Linear', currentX + 4 + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
-            // Packets
-            doc.setFillColor(240, 253, 244); // Reset Fill Color
+            doc.setFillColor(240, 253, 244);
             doc.roundedRect(currentX + 4 + colW, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
             doc.setFontSize(8);
-            doc.text(pPackets, currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.setFont(undefined, 'bold');
+            doc.text(item.produced.packets.toFixed(1), currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Packets', currentX + 4 + colW + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
-            // Pcs
-            doc.setFillColor(240, 253, 244); // Reset Fill Color
+            doc.setFillColor(240, 253, 244);
             doc.roundedRect(currentX + 4 + colW * 2, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
             doc.setFontSize(8);
-            doc.text(pPcs, currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.setFont(undefined, 'bold');
+            doc.text(item.produced.pcs.toFixed(0), currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
 
             // --- DELIVERED Section ---
-            contentY += 20;
-
+            contentY += 22;
             doc.setFontSize(9);
-            doc.setTextColor(220, 38, 38); // Red-600
+            doc.setTextColor(220, 38, 38);
             doc.setFont(undefined, 'bold');
             doc.text('DELIVERED', currentX + 4, contentY);
-
-            // Draw underline
-            doc.setDrawColor(254, 226, 226); // Red-100
+            doc.setDrawColor(254, 226, 226);
             doc.line(currentX + 4, contentY + 1, currentX + 22, contentY + 1);
 
             contentY += 6;
             doc.setFontSize(8);
             doc.setFont(undefined, 'normal');
-            doc.setTextColor(185, 28, 28); // Red-700
+            doc.setTextColor(185, 28, 28);
 
-            // Delivered Values
-            const dLinear = item.delivered.linear.toFixed(1);
-            const dPackets = item.delivered.packets.toFixed(1);
-            const dPcs = item.delivered.pcs.toFixed(0);
-
-            // Linear
-            doc.setFillColor(254, 242, 242); // Red-50
+            doc.setFillColor(254, 242, 242);
             doc.roundedRect(currentX + 4, contentY, colW - 2, 14, 1, 1, 'F');
             doc.setFont(undefined, 'bold');
-            doc.text(dLinear, currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.text(item.delivered.linear.toFixed(1), currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Linear', currentX + 4 + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
-            // Packets
-            doc.setFillColor(254, 242, 242); // Reset Fill Color
+            doc.setFillColor(254, 242, 242);
             doc.roundedRect(currentX + 4 + colW, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
             doc.setFontSize(8);
-            doc.text(dPackets, currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.setFont(undefined, 'bold');
+            doc.text(item.delivered.packets.toFixed(1), currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Packets', currentX + 4 + colW + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
-            // Pcs
-            doc.setFillColor(254, 242, 242); // Reset Fill Color
+            doc.setFillColor(254, 242, 242);
             doc.roundedRect(currentX + 4 + colW * 2, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
             doc.setFontSize(8);
-            doc.text(dPcs, currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.setFont(undefined, 'bold');
+            doc.text(item.delivered.pcs.toFixed(0), currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
 
             // --- REMAINING Section ---
-            contentY += 20;
-
+            contentY += 22;
             doc.setFontSize(9);
-            doc.setTextColor(37, 99, 235); // Blue-600
+            doc.setTextColor(37, 99, 235);
             doc.setFont(undefined, 'bold');
             doc.text('REMAINING', currentX + 4, contentY);
-            doc.setDrawColor(219, 234, 254); // Blue-100
+            doc.setDrawColor(219, 234, 254);
             doc.line(currentX + 4, contentY + 1, currentX + 22, contentY + 1);
 
             contentY += 6;
             doc.setFontSize(8);
             doc.setFont(undefined, 'normal');
-            doc.setTextColor(29, 78, 216); // Blue-700
+            doc.setTextColor(29, 78, 216);
 
-            const rLinear = item.remaining.linear.toFixed(1);
-            const rPackets = item.remaining.packets.toFixed(1);
-            const rPcs = item.remaining.pcs.toFixed(0);
-
-            doc.setFillColor(239, 246, 255); // Blue-50
+            doc.setFillColor(239, 246, 255);
             doc.roundedRect(currentX + 4, contentY, colW - 2, 14, 1, 1, 'F');
             doc.setFont(undefined, 'bold');
-            doc.text(rLinear, currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.text(item.remaining.linear.toFixed(1), currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Linear', currentX + 4 + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
             doc.setFillColor(239, 246, 255);
             doc.roundedRect(currentX + 4 + colW, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
             doc.setFontSize(8);
-            doc.text(rPackets, currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.setFont(undefined, 'bold');
+            doc.text(item.remaining.packets.toFixed(1), currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Packets', currentX + 4 + colW + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
             doc.setFillColor(239, 246, 255);
             doc.roundedRect(currentX + 4 + colW * 2, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
             doc.setFontSize(8);
-            doc.text(rPcs, currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFont(undefined, 'normal');
+            doc.setFont(undefined, 'bold');
+            doc.text(item.remaining.pcs.toFixed(0), currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
             doc.setFontSize(7);
+            doc.setFont(undefined, 'normal');
             doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
 
-            // Update layout position
             if ((index + 1) % colCount === 0) {
                 currentX = margin;
                 currentY += cardHeight + cardGap;
@@ -406,8 +386,7 @@ function Reports() {
                     </button>
                 </div>
 
-                {/* Filters */}
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Product</label>
                         <select
@@ -437,6 +416,19 @@ function Reports() {
                             ))}
                         </select>
                     </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Type</label>
+                        <select
+                            name="type"
+                            value={filters.type}
+                            onChange={handleFilterChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 bg-white"
+                        >
+                            <option value="">All Types</option>
+                            <option value="ST">Stat (ST)</option>
+                            <option value="TF">Tri Fold (TF)</option>
+                        </select>
+                    </div>
 
                     <div>
                         <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">From Date</label>
@@ -461,7 +453,6 @@ function Reports() {
                     </div>
                 </div>
 
-                {/* Report Grid */}
                 {loading ? (
                     <div className="flex justify-center items-center h-64">
                         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
@@ -479,12 +470,16 @@ function Reports() {
                             <div key={idx} className="bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
                                 <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
                                     <h3 className="font-bold text-gray-800 truncate" title={item.name}>{item.name}</h3>
-                                    <span className="bg-white border border-gray-200 px-2 py-1 rounded text-xs font-semibold text-gray-600">
-                                        {item.size}
-                                    </span>
+                                    <div className="flex items-center space-x-2">
+                                        <span className={`px-2 py-0.5 rounded text-xs font-semibold text-white ${item.type === 'ST' ? 'bg-blue-600' : item.type === 'TF' ? 'bg-purple-600' : 'bg-gray-500'}`}>
+                                            {item.type}
+                                        </span>
+                                        <span className="bg-white border border-gray-200 px-2 py-1 rounded text-xs font-semibold text-gray-600">
+                                            {item.size}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="p-4 space-y-4">
-                                    {/* Produced */}
                                     <div>
                                         <div className="text-xs font-bold text-green-600 uppercase mb-1 flex items-center">
                                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
@@ -506,7 +501,6 @@ function Reports() {
                                         </div>
                                     </div>
 
-                                    {/* Delivered */}
                                     <div>
                                         <div className="text-xs font-bold text-red-600 uppercase mb-1 flex items-center">
                                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
@@ -528,7 +522,6 @@ function Reports() {
                                         </div>
                                     </div>
 
-                                    {/* Remaining */}
                                     <div>
                                         <div className="text-xs font-bold text-blue-600 uppercase mb-1 flex items-center">
                                             <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>

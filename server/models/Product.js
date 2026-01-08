@@ -38,12 +38,18 @@ const productSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  type: {
+    type: String,
+    enum: ['ST', 'TF'],
+    required: true,
+    default: 'ST'
   }
 }, {
   timestamps: true
 });
 
-// Compound index to ensure unique product name + size per user
-productSchema.index({ name: 1, size: 1, user: 1 }, { unique: true });
+// Compound index to ensure unique product name + size + type per user
+productSchema.index({ name: 1, size: 1, type: 1, user: 1 }, { unique: true });
 
 module.exports = mongoose.model('Product', productSchema);

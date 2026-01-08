@@ -6,6 +6,12 @@ const transactionSchema = new mongoose.Schema({
     ref: 'Product',
     required: true
   },
+  productType: {
+    type: String,
+    enum: ['ST', 'TF'],
+    required: true,
+    default: 'ST'
+  },
   productId: {
     type: String,
     required: true

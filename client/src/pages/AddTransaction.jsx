@@ -9,7 +9,8 @@ function AddTransaction() {
     const [formData, setFormData] = useState({
         productName: '',
         size: '',
-        type: 'produce',
+        productType: '', // ST or TF
+        type: 'produce', // produce or delivered
         quantity: '',
         unit: 'pcs',
         date: format(new Date(), 'yyyy-MM-dd'),
@@ -18,6 +19,7 @@ function AddTransaction() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [sizes, setSizes] = useState([]);
+    const [availableTypes, setAvailableTypes] = useState([]); // Types for the selected Name+Size
 
     useEffect(() => {
         loadProducts();
@@ -32,12 +34,33 @@ function AddTransaction() {
             )];
             setSizes(productSizes);
             if (!productSizes.includes(formData.size)) {
-                setFormData(prev => ({ ...prev, size: '' }));
+                setFormData(prev => ({ ...prev, size: '', productType: '' }));
             }
         } else {
             setSizes([]);
+            setAvailableTypes([]);
         }
     }, [formData.productName, products]);
+
+    useEffect(() => {
+        if (formData.productName && formData.size) {
+            const types = products
+                .filter(p => p.name === formData.productName && p.size === formData.size)
+                .map(p => p.type || 'ST');
+
+            const uniqueTypes = [...new Set(types)];
+            setAvailableTypes(uniqueTypes);
+
+            // Auto-select if only one type exists, or if current selection is invalid
+            if (uniqueTypes.length === 1) {
+                setFormData(prev => ({ ...prev, productType: uniqueTypes[0] }));
+            } else if (!uniqueTypes.includes(formData.productType)) {
+                setFormData(prev => ({ ...prev, productType: '' }));
+            }
+        } else {
+            setAvailableTypes([]);
+        }
+    }, [formData.productName, formData.size, products]);
 
     const loadProducts = async () => {
         try {
@@ -90,12 +113,14 @@ function AddTransaction() {
         setMessage({ type: '', text: '' });
 
         try {
-            // Find the product that matches both name and size
+            // Find the product that matches name, size AND type
             const selectedProduct = products.find(
-                p => p.name === formData.productName && p.size === formData.size
+                p => p.name === formData.productName &&
+                    p.size === formData.size &&
+                    (p.type || 'ST') === (formData.productType || 'ST')
             );
             if (!selectedProduct) {
-                throw new Error('Product with selected name and size not found');
+                throw new Error('Product not found (check Name, Size, and Type)');
             }
 
             // Validate delivery quantity before submitting
@@ -167,169 +192,216 @@ function AddTransaction() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-                        <label htmlFor="productName" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Product <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="productName"
-                            name="productName"
-                            required
-                            value={formData.productName}
-                            onChange={handleFormChange}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-                            style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
-                        >
-                            <option value="">Select a product</option>
-                            {uniqueProductNames.map(name => (
-                                <option key={name} value={name}>
-                                    {name}
-                                </option>
-                            ))}
-                        </select>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="relative overflow-hidden">
+                            <label htmlFor="productName" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Product <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="productName"
+                                name="productName"
+                                required
+                                value={formData.productName}
+                                onChange={handleFormChange}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                            >
+                                <option value="">Select a product</option>
+                                {uniqueProductNames.map(name => (
+                                    <option key={name} value={name}>
+                                        {name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="relative overflow-hidden">
+                            <label htmlFor="size" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Size <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="size"
+                                name="size"
+                                required
+                                value={formData.size}
+                                onChange={handleFormChange}
+                                disabled={!formData.productName}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed appearance-none bg-white"
+                            >
+                                <option value="">Select size</option>
+                                {sizes.map(size => (
+                                    <option key={size} value={size}>
+                                        {size}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-                        <label htmlFor="size" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Size <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="size"
-                            name="size"
-                            required
-                            value={formData.size}
-                            onChange={handleFormChange}
-                            disabled={!formData.productName}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition disabled:bg-gray-100 disabled:cursor-not-allowed appearance-none bg-white"
-                            style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
-                        >
-                            <option value="">Select size</option>
-                            {sizes.map(size => (
-                                <option key={size} value={size}>
-                                    {size}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label htmlFor="packetsPerLinear" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Packets per Linear <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="number"
-                            disabled
-                            value={(() => {
-                                const p = products.find(prod => prod.name === formData.productName && prod.size === formData.size);
-                                return p ? p.packetsPerLinear : '';
-                            })()}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                            placeholder="Auto-filled from product"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="pcsPerPacket" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Pcs per Packet <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                            type="number"
-                            disabled
-                            value={(() => {
-                                const p = products.find(prod => prod.name === formData.productName && prod.size === formData.size);
-                                return p ? p.pcsPerPacket : '';
-                            })()}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                            placeholder="Auto-filled from product"
-                        />
-                    </div>
-
-                    <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-                        <label htmlFor="type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Transaction Type <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="type"
-                            name="type"
-                            required
-                            value={formData.type}
-                            onChange={handleFormChange}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-                            style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
-                        >
-                            <option value="produce">Produce (Add)</option>
-                            <option value="delivered">Delivered (Subtract)</option>
-                        </select>
-                    </div>
-
-                    <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-                        <label htmlFor="unit" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Unit <span className="text-red-500">*</span>
-                        </label>
-                        <select
-                            id="unit"
-                            name="unit"
-                            required
-                            value={formData.unit}
-                            onChange={handleFormChange}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-                        >
-                            <option value="linear">Linear</option>
-                            <option value="packet">Packets</option>
-                            <option value="pcs">Pieces</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label htmlFor="quantity" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Quantity <span className="text-red-500">*</span>
-                            {formData.productName && formData.size && formData.type === 'delivered' && (
-                                <span className="ml-2 text-xs text-gray-500">
-                                    {(() => {
-                                        const product = products.find(p => p.name === formData.productName && p.size === formData.size);
-                                        if (!product) return '(Stock: 0)';
-                                        const available = fromPcs(product.quantity, formData.unit, product);
-                                        return `(Stock: ${available.toFixed(2)} ${formData.unit === 'linear' ? 'linear' : formData.unit === 'packet' ? 'packets' : 'pcs'})`;
-                                    })()}
-                                </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="relative overflow-hidden">
+                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Type
+                            </label>
+                            {availableTypes.length > 1 ? (
+                                <select
+                                    name="productType"
+                                    required
+                                    value={formData.productType}
+                                    onChange={handleFormChange}
+                                    className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                                >
+                                    <option value="">Select Type</option>
+                                    <option value="ST">Stat (ST)</option>
+                                    <option value="TF">Tri Fold (TF)</option>
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    disabled
+                                    value={formData.productType === 'TF' ? 'Tri Fold (TF)' : 'Stat (ST)'}
+                                    className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                                />
                             )}
-                        </label>
-                        <input
-                            type="number"
-                            id="quantity"
-                            name="quantity"
-                            required
-                            step="0.01"
-                            min="0"
-                            max={(() => {
-                                if (formData.type !== 'delivered') return undefined;
-                                const product = products.find(p => p.name === formData.productName && p.size === formData.size);
-                                if (!product) return undefined;
-                                return fromPcs(product.quantity, formData.unit, product);
-                            })()}
-                            value={formData.quantity}
-                            onChange={handleFormChange}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                            placeholder="Enter quantity"
-                        />
+                        </div>
+
+                        <div>
+                            <label htmlFor="packetsPerLinear" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Pkts/Lin <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                disabled
+                                value={(() => {
+                                    const p = products.find(prod =>
+                                        prod.name === formData.productName &&
+                                        prod.size === formData.size &&
+                                        (prod.type || 'ST') === (formData.productType || 'ST')
+                                    );
+                                    return p ? p.packetsPerLinear : '';
+                                })()}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                                placeholder="Auto"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="pcsPerPacket" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Pcs/Pkt <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                disabled
+                                value={(() => {
+                                    const p = products.find(prod =>
+                                        prod.name === formData.productName &&
+                                        prod.size === formData.size &&
+                                        (prod.type || 'ST') === (formData.productType || 'ST')
+                                    );
+                                    return p ? p.pcsPerPacket : '';
+                                })()}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                                placeholder="Auto"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="relative overflow-hidden">
+                            <label htmlFor="type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Transaction Type <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="type"
+                                name="type"
+                                required
+                                value={formData.type}
+                                onChange={handleFormChange}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                            >
+                                <option value="produce">Produce (Add)</option>
+                                <option value="delivered">Delivered (Subtract)</option>
+                            </select>
+                        </div>
+
+                        <div className="relative overflow-hidden">
+                            <label htmlFor="unit" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Unit <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="unit"
+                                name="unit"
+                                required
+                                value={formData.unit}
+                                onChange={handleFormChange}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                            >
+                                <option value="linear">Linear</option>
+                                <option value="packet">Packets</option>
+                                <option value="pcs">Pieces</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="quantity" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Quantity <span className="text-red-500">*</span>
+                                {formData.productName && formData.size && formData.type === 'delivered' && (
+                                    <span className="ml-1 text-[10px] text-gray-500">
+                                        {(() => {
+                                            const product = products.find(p =>
+                                                p.name === formData.productName &&
+                                                p.size === formData.size &&
+                                                (p.type || 'ST') === (formData.productType || 'ST')
+                                            );
+                                            if (!product) return '(Stock: 0)';
+                                            const available = fromPcs(product.quantity, formData.unit, product);
+                                            return `(Stock: ${available.toFixed(1)})`;
+                                        })()}
+                                    </span>
+                                )}
+                            </label>
+                            <input
+                                type="number"
+                                id="quantity"
+                                name="quantity"
+                                required
+                                step="0.01"
+                                min="0"
+                                max={(() => {
+                                    if (formData.type !== 'delivered') return undefined;
+                                    const product = products.find(p =>
+                                        p.name === formData.productName &&
+                                        p.size === formData.size &&
+                                        (p.type || 'ST') === (formData.productType || 'ST')
+                                    );
+                                    if (!product) return undefined;
+                                    return fromPcs(product.quantity, formData.unit, product);
+                                })()}
+                                value={formData.quantity}
+                                onChange={handleFormChange}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                                placeholder="Enter quantity"
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor="date" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Date
+                            </label>
+                            <input
+                                type="date"
+                                id="date"
+                                name="date"
+                                value={formData.date}
+                                onChange={handleFormChange}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                            />
+                        </div>
                     </div>
 
                     <div>
-                        <label htmlFor="date" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-                            Date
-                        </label>
-                        <input
-                            type="date"
-                            id="date"
-                            name="date"
-                            value={formData.date}
-                            onChange={handleFormChange}
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-                        />
-                    </div>
-
-                    <div>
-                        <label htmlFor="note" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                        <label htmlFor="note" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                             Note <span className="text-gray-400 text-xs">(Optional)</span>
                         </label>
                         <textarea
@@ -337,31 +409,31 @@ function AddTransaction() {
                             name="note"
                             value={formData.note}
                             onChange={handleFormChange}
-                            rows="2"
-                            className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition resize-none"
+                            rows="1"
+                            className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition resize-none"
                             placeholder="Add a note (optional)"
                         />
                     </div>
 
-                    <div className="flex gap-4 mt-4">
+                    <div className="flex gap-4 mt-2">
                         <button
                             type="button"
                             onClick={() => navigate('/manage-products')}
-                            className="flex-1 bg-gray-100 text-gray-700 py-2 md:py-3 px-6 text-sm md:text-base rounded-lg font-semibold hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors shadow-sm hover:shadow"
+                            className="flex-1 bg-gray-100 text-gray-700 py-2 px-6 text-sm md:text-base rounded-lg font-semibold hover:bg-gray-200 transition-colors shadow-sm"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-1 bg-primary-600 text-white py-2 md:py-3 px-6 text-sm md:text-base rounded-lg font-semibold hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg"
+                            className="flex-1 bg-primary-600 text-white py-2 px-6 text-sm md:text-base rounded-lg font-semibold hover:bg-primary-700 disabled:opacity-50 transition-colors shadow-md"
                         >
                             {loading ? 'Recording...' : 'Record Transaction'}
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </div >
+        </div >
     );
 }
 

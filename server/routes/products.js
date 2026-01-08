@@ -65,7 +65,8 @@ router.post('/', protect, async (req, res) => {
       quantity,
       quantityUnit = 'linear',
       packetsPerLinear,
-      pcsPerPacket
+      pcsPerPacket,
+      type = 'ST'
     } = req.body;
 
     if (!name || !size || quantity === undefined) {
@@ -76,10 +77,11 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ error: 'packetsPerLinear and pcsPerPacket are required' });
     }
 
-    // Check if product with same name and size exists
+    // Check if product with same name, size and type exists
     const existingProduct = await Product.findOne({
       name,
       size,
+      type,
       user: req.user._id
     });
 
@@ -87,10 +89,29 @@ router.post('/', protect, async (req, res) => {
 
     if (existingProduct) {
       existingProduct.quantity += incomingPcs;
-      existingProduct.previousStock = existingProduct.quantity;
+      // We don't update previousStock here to keep the original "Initial" stock fixed
+      // existingProduct.previousStock remains the same
       existingProduct.packetsPerLinear = packetsPerLinear;
       existingProduct.pcsPerPacket = pcsPerPacket;
+      if (type) existingProduct.type = type;
       await existingProduct.save();
+
+      // Create a "produce" transaction for this manual addition so history matches
+      await Transaction.create({
+        product: existingProduct._id,
+        productId: existingProduct._id,
+        productName: name,
+        size: size,
+        type: 'produce',
+        unit: quantityUnit,
+        quantity: Number(quantity),
+        quantityInPcs: incomingPcs,
+        date: new Date(),
+        note: 'Manual stock addition (Add Product form)',
+        productType: type,
+        user: req.user._id
+      });
+
       return res.status(200).json(existingProduct);
     }
 
@@ -101,13 +122,14 @@ router.post('/', protect, async (req, res) => {
       previousStock: incomingPcs,
       packetsPerLinear,
       pcsPerPacket,
+      type,
       user: req.user._id
     });
 
     res.status(201).json(product);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ error: 'Product with this name and size already exists' });
+      return res.status(400).json({ error: `Product with name "${name}", size "${size}" and type "${type}" already exists` });
     }
     const msg = error.message || 'Failed to add product';
     res.status(500).json({ error: msg });
@@ -126,7 +148,8 @@ router.put('/:id', protect, async (req, res) => {
       quantityUnit = 'pcs',
       packetsPerLinear,
       pcsPerPacket,
-      previousStock
+      previousStock,
+      type
     } = req.body;
 
     const product = await Product.findOne({
@@ -142,12 +165,33 @@ router.put('/:id', protect, async (req, res) => {
     if (size !== undefined) product.size = size;
     if (packetsPerLinear !== undefined) product.packetsPerLinear = Number(packetsPerLinear);
     if (pcsPerPacket !== undefined) product.pcsPerPacket = Number(pcsPerPacket);
+    if (type !== undefined) product.type = type;
 
     if (quantity !== undefined) {
-      product.quantity = toPcs(quantity, quantityUnit, {
+      const newPcs = toPcs(quantity, quantityUnit || 'pcs', {
         packetsPerLinear: product.packetsPerLinear,
         pcsPerPacket: product.pcsPerPacket
       });
+
+      const diff = newPcs - product.quantity;
+      if (diff !== 0) {
+        // Create an audit transaction for this manual adjustment
+        await Transaction.create({
+          product: product._id,
+          productId: product._id,
+          productName: product.name,
+          size: product.size,
+          type: diff > 0 ? 'produce' : 'delivered',
+          unit: 'pcs',
+          quantity: Math.abs(diff),
+          quantityInPcs: Math.abs(diff),
+          date: new Date(),
+          note: `Manual stock adjustment from ${product.quantity} to ${newPcs} pcs`,
+          productType: product.type,
+          user: req.user._id
+        });
+        product.quantity = newPcs;
+      }
     }
 
     if (previousStock !== undefined) {
@@ -159,14 +203,15 @@ router.put('/:id', protect, async (req, res) => {
 
     await product.save();
 
-    // If name or size changed, propagate to related transactions for display consistency
-    if (name !== undefined || size !== undefined) {
+    // If name, size or type changed, propagate to related transactions for display consistency
+    if (name !== undefined || size !== undefined || type !== undefined) {
       await Transaction.updateMany(
         { product: product._id, user: req.user._id },
         {
           $set: {
             productName: product.name,
-            size: product.size
+            size: product.size,
+            productType: product.type
           }
         }
       );
@@ -175,7 +220,7 @@ router.put('/:id', protect, async (req, res) => {
     res.json(product);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ error: 'Product with this name and size already exists' });
+      return res.status(400).json({ error: `Product with name "${name}", size "${size}" and type "${type}" already exists` });
     }
     const msg = error.message || 'Failed to update product';
     res.status(500).json({ error: msg });

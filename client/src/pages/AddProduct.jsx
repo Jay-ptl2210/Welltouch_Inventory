@@ -7,6 +7,7 @@ function AddProduct() {
   const [formData, setFormData] = useState({
     name: '',
     size: '',
+    type: 'ST',
     packetsPerLinear: '',
     pcsPerPacket: '',
     quantity: '',
@@ -32,6 +33,7 @@ function AddProduct() {
       const productData = {
         name: formData.name,
         size: formData.size,
+        type: formData.type,
         packetsPerLinear: parseFloat(formData.packetsPerLinear) || 0,
         pcsPerPacket: parseFloat(formData.pcsPerPacket) || 0,
         quantity: parseFloat(formData.quantity) || 0,
@@ -42,6 +44,7 @@ function AddProduct() {
       setFormData({
         name: '',
         size: '',
+        type: 'ST',
         packetsPerLinear: '',
         pcsPerPacket: '',
         quantity: '',
@@ -65,8 +68,8 @@ function AddProduct() {
         {message.text && (
           <div
             className={`mb-3 md:mb-4 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded ${message.type === 'success'
-                ? 'bg-green-100 border border-green-400 text-green-700'
-                : 'bg-red-100 border border-red-400 text-red-700'
+              ? 'bg-green-100 border border-green-400 text-green-700'
+              : 'bg-red-100 border border-red-400 text-red-700'
               }`}
           >
             {message.text}
@@ -90,20 +93,38 @@ function AddProduct() {
             />
           </div>
 
-          <div>
-            <label htmlFor="size" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              Size <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              id="size"
-              name="size"
-              required
-              value={formData.size}
-              onChange={handleChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
-              placeholder="e.g., Small, Medium, Large or specific size"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            <div>
+              <label htmlFor="size" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                Size <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="size"
+                name="size"
+                required
+                value={formData.size}
+                onChange={handleChange}
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                placeholder="e.g., Small, Medium, Large"
+              />
+            </div>
+            <div>
+              <label htmlFor="type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="type"
+                name="type"
+                required
+                value={formData.type}
+                onChange={handleChange}
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+              >
+                <option value="ST">Stat (ST)</option>
+                <option value="TF">Tri Fold (TF)</option>
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">

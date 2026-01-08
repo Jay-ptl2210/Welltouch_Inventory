@@ -20,6 +20,7 @@ function ManageProducts() {
   const [filters, setFilters] = useState({
     product: '',
     size: '',
+    type: '', // product type filter (ST/TF)
     startDate: '',
     endDate: ''
   });
@@ -298,6 +299,7 @@ function ManageProducts() {
     .filter(transaction => {
       if (filters.product && transaction.productName !== filters.product) return false;
       if (filters.size && transaction.size !== filters.size) return false;
+      if (filters.type && transaction.productType !== filters.type) return false;
 
       if (filters.startDate || filters.endDate) {
         const transactionDate = new Date(transaction.date).toISOString().split('T')[0]; // YYYY-MM-DD
@@ -361,7 +363,7 @@ function ManageProducts() {
       <div className="bg-white rounded-lg shadow-lg p-3 md:p-8">
         <h3 className="text-lg md:text-2xl font-bold text-gray-800 mb-4 md:mb-6">Transaction History</h3>
 
-        <div className="mb-4 md:mb-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 overflow-hidden">
+        <div className="mb-4 md:mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 overflow-hidden">
           <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
             <label htmlFor="filter-product" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
               Filter by Product
@@ -401,6 +403,24 @@ function ManageProducts() {
                   {size}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
+            <label htmlFor="filter-type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+              Filter by Type
+            </label>
+            <select
+              id="filter-type"
+              name="type"
+              value={filters.type}
+              onChange={handleFilterChange}
+              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+              style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
+            >
+              <option value="">All Types</option>
+              <option value="ST">Stat (ST)</option>
+              <option value="TF">Tri Fold (TF)</option>
             </select>
           </div>
 
@@ -465,6 +485,9 @@ function ManageProducts() {
                     </th>
                     <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Size
+                    </th>
+                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Prod Type
                     </th>
                     <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Type
@@ -538,6 +561,14 @@ function ManageProducts() {
                               ) : (
                                 transaction.size
                               )}
+                            </td>
+                            <td className="px-3 md:px-6 py-4 whitespace-nowrap">
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${transaction.productType === 'ST' ? 'bg-blue-100 text-blue-800' :
+                                transaction.productType === 'TF' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                {transaction.productType === 'ST' ? 'Stat' :
+                                  transaction.productType === 'TF' ? 'Tri Fold' : '-'}
+                              </span>
                             </td>
                             <td className="px-3 md:px-6 py-4 whitespace-nowrap">
                               {isEditing ? (

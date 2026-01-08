@@ -13,6 +13,7 @@ function Products() {
   const [editForm, setEditForm] = useState({
     name: '',
     size: '',
+    type: 'ST',
     packetsPerLinear: '',
     pcsPerPacket: '',
     quantity: '',
@@ -20,7 +21,8 @@ function Products() {
   });
   const [filters, setFilters] = useState({
     name: '',
-    size: ''
+    size: '',
+    type: ''
   });
 
   useEffect(() => {
@@ -47,6 +49,7 @@ function Products() {
     setEditForm({
       name: product.name,
       size: product.size,
+      type: product.type || 'ST',
       packetsPerLinear: (product.packetsPerLinear ?? '').toString(),
       pcsPerPacket: (product.pcsPerPacket ?? '').toString(),
       quantity: product.quantity.toString(),
@@ -60,6 +63,7 @@ function Products() {
     setEditForm({
       name: '',
       size: '',
+      type: 'ST',
       packetsPerLinear: '',
       pcsPerPacket: '',
       quantity: '',
@@ -83,6 +87,7 @@ function Products() {
       const payload = {
         name: editForm.name,
         size: editForm.size,
+        type: editForm.type,
         packetsPerLinear: parseFloat(editForm.packetsPerLinear) || 0,
         pcsPerPacket: parseFloat(editForm.pcsPerPacket) || 0,
         quantity: parseFloat(editForm.quantity) || 0,
@@ -139,6 +144,9 @@ function Products() {
     if (filters.size && product.size.toLowerCase().indexOf(filters.size.toLowerCase()) === -1) {
       return false;
     }
+    if (filters.type && product.type !== filters.type) {
+      return false;
+    }
     return true;
   });
 
@@ -191,18 +199,17 @@ function Products() {
 
         {message.text && (
           <div
-            className={`mb-3 md:mb-4 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded ${
-              message.type === 'success'
-                ? 'bg-green-100 border border-green-400 text-green-700'
-                : 'bg-red-100 border border-red-400 text-red-700'
-            }`}
+            className={`mb-3 md:mb-4 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded ${message.type === 'success'
+              ? 'bg-green-100 border border-green-400 text-green-700'
+              : 'bg-red-100 border border-red-400 text-red-700'
+              }`}
           >
             {message.text}
           </div>
         )}
 
         {/* Filters */}
-        <div className="mb-4 md:mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 overflow-hidden">
+        <div className="mb-4 md:mb-6 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 overflow-hidden">
           <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
             <label htmlFor="filter-name" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
               Filter by Product Name
@@ -239,6 +246,24 @@ function Products() {
               ))}
             </select>
           </div>
+
+          <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
+            <label htmlFor="filter-type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+              Filter by Type
+            </label>
+            <select
+              id="filter-type"
+              name="type"
+              value={filters.type}
+              onChange={handleFilterChange}
+              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+              style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
+            >
+              <option value="">All Types</option>
+              <option value="ST">Stat (ST)</option>
+              <option value="TF">Tri Fold (TF)</option>
+            </select>
+          </div>
         </div>
 
         {/* Products Table */}
@@ -259,8 +284,8 @@ function Products() {
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">No products found</h3>
             <p className="mt-1 text-sm text-gray-500">
-              {products.length === 0 
-                ? 'Get started by adding a new product.' 
+              {products.length === 0
+                ? 'Get started by adding a new product.'
                 : 'Try adjusting your filters.'}
             </p>
           </div>
@@ -276,6 +301,9 @@ function Products() {
                     Size
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stock (Linear / Packets / Pcs)
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -287,9 +315,9 @@ function Products() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -298,9 +326,9 @@ function Products() {
                   const stockStatus = counts.pcs === 0
                     ? 'out-of-stock'
                     : counts.pcs < 10
-                    ? 'low-stock'
-                    : 'in-stock';
-                  
+                      ? 'low-stock'
+                      : 'in-stock';
+
                   const isEditing = editingId === (product._id || product.id);
 
                   return (
@@ -329,6 +357,24 @@ function Products() {
                           />
                         ) : (
                           <div className="text-sm text-gray-500">{product.size}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {isEditing ? (
+                          <select
+                            name="type"
+                            value={editForm.type}
+                            onChange={handleEditChange}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white"
+                          >
+                            <option value="ST">ST</option>
+                            <option value="TF">TF</option>
+                          </select>
+                        ) : (
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${product.type === 'ST' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                            }`}>
+                            {product.type === 'ST' ? 'Stat' : 'Tri Fold'}
+                          </span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -396,19 +442,18 @@ function Products() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            stockStatus === 'out-of-stock'
-                              ? 'bg-red-100 text-red-800'
-                              : stockStatus === 'low-stock'
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${stockStatus === 'out-of-stock'
+                            ? 'bg-red-100 text-red-800'
+                            : stockStatus === 'low-stock'
                               ? 'bg-yellow-100 text-yellow-800'
                               : 'bg-green-100 text-green-800'
-                          }`}
+                            }`}
                         >
                           {stockStatus === 'out-of-stock'
                             ? 'Out of Stock'
                             : stockStatus === 'low-stock'
-                            ? 'Low Stock'
-                            : 'In Stock'}
+                              ? 'Low Stock'
+                              : 'In Stock'}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">

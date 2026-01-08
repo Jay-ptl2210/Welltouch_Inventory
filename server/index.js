@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require('express'); // Triggering restart
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
@@ -9,7 +9,22 @@ const connectDB = require('./config/database');
 dotenv.config();
 
 // Connect to database
-connectDB();
+connectDB().then(async () => {
+  try {
+    const mongoose = require('mongoose');
+    const Product = require('./models/Product');
+    const collection = mongoose.connection.collection('products');
+    const indexes = await collection.indexes();
+    const oldIndexName = 'name_1_size_1_user_1';
+    if (indexes.some(i => i.name === oldIndexName)) {
+      console.log(`[Migration] Dropping old index ${oldIndexName}...`);
+      await collection.dropIndex(oldIndexName);
+      console.log('[Migration] Old index dropped.');
+    }
+  } catch (err) {
+    console.error('[Migration] Index check failed:', err.message);
+  }
+});
 
 const app = express();
 
@@ -37,7 +52,7 @@ app.get('/api/health', (req, res) => {
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
-  
+
   // Serve React app for all non-API routes
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));

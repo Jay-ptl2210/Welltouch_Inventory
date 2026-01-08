@@ -38,13 +38,13 @@ router.get('/', protect, async (req, res) => {
         strictPopulate: false // Allow populate even if product is deleted
       })
       .sort({ date: -1, createdAt: -1 }); // Sort by date descending, then by createdAt descending (newest first)
-    
+
     res.json(transactions);
   } catch (error) {
     console.error('Error fetching transactions:', error);
     // Don't expose internal error details in production
-    const errorMessage = process.env.NODE_ENV === 'production' 
-      ? 'Failed to fetch transactions' 
+    const errorMessage = process.env.NODE_ENV === 'production'
+      ? 'Failed to fetch transactions'
       : error.message;
     res.status(500).json({ error: 'Failed to fetch transactions', details: errorMessage });
   }
@@ -120,6 +120,7 @@ router.post('/', protect, async (req, res) => {
       quantityInPcs: deltaPcs,
       date: date ? new Date(date) : new Date(),
       note: note || '',
+      productType: product.type,
       user: req.user._id
     });
 
