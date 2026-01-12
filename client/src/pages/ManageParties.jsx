@@ -6,7 +6,8 @@ import Pagination from '../components/Pagination';
 function ManageParties() {
     const [parties, setParties] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [formData, setFormData] = useState({ name: '', phone: '', address: '' });
+    const [formData, setFormData] = useState({ name: '' });
+
     const [message, setMessage] = useState({ type: '', text: '' });
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
@@ -39,8 +40,9 @@ function ManageParties() {
         try {
             await addParty(formData);
             setMessage({ type: 'success', text: 'Entity registered successfully' });
-            setFormData({ name: '', phone: '', address: '' });
+            setFormData({ name: '' });
             loadParties();
+
         } catch (err) {
             setMessage({ type: 'error', text: err.response?.data?.error || 'Registration failure' });
         }
@@ -117,22 +119,13 @@ function ManageParties() {
                                             <p className="text-[10px] font-bold text-primary-600 uppercase tracking-wider mb-1">Company / Individual</p>
                                             <h3 className="text-lg font-bold text-gray-900 leading-tight">{party.name}</h3>
                                         </div>
-                                        <div className="flex gap-6">
-                                            <div>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contact</p>
-                                                <p className="text-sm font-bold text-gray-800">{party.phone || 'No Phone'}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                                                <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-tighter">Verified</span>
-                                            </div>
-                                        </div>
-                                        <div className="pt-4 border-t border-gray-50">
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Primary Address</p>
-                                            <p className="text-xs font-medium text-gray-500 leading-relaxed line-clamp-2">{party.address || 'Address not registered.'}</p>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                                            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-tighter">Verified</span>
                                         </div>
                                     </div>
                                 </div>
+
                             ))}
                             {parties.length === 0 && (
                                 <div className="col-span-full py-24 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 text-center">

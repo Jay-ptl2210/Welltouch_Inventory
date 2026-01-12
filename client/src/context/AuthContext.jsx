@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       const storedToken = localStorage.getItem('token');
       const storedRefreshToken = localStorage.getItem('refreshToken');
-      
+
       if (storedToken) {
         setToken(storedToken);
         setRefreshToken(storedRefreshToken);
@@ -65,14 +65,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await login(email, password);
       const { token: newToken, refreshToken: newRefreshToken, user: userData } = response.data;
-      
+
       setToken(newToken);
       setRefreshToken(newRefreshToken);
       setUser(userData);
-      
+
       localStorage.setItem('token', newToken);
       localStorage.setItem('refreshToken', newRefreshToken);
-      
+
       return { success: true };
     } catch (error) {
       return {
@@ -86,14 +86,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await register(name, email, password);
       const { token: newToken, refreshToken: newRefreshToken, user: userData } = response.data;
-      
+
       setToken(newToken);
       setRefreshToken(newRefreshToken);
       setUser(userData);
-      
+
       localStorage.setItem('token', newToken);
       localStorage.setItem('refreshToken', newRefreshToken);
-      
+
       return { success: true };
     } catch (error) {
       return {
@@ -105,8 +105,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await logoutApi();
+      await logoutApi(refreshToken);
     } catch (error) {
+
       console.error('Logout error:', error);
     } finally {
       setToken(null);

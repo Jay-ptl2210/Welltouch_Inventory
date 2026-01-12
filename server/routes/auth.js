@@ -32,9 +32,11 @@ router.post('/register', async (req, res) => {
     const accessToken = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    // Save refresh token to database
-    user.refreshToken = refreshToken;
+    // Add refresh token to array (multi-device support)
+    user.refreshTokens = user.refreshTokens || [];
+    user.refreshTokens.push(refreshToken);
     await user.save({ validateBeforeSave: false });
+
 
     res.status(201).json({
       success: true,
@@ -84,9 +86,19 @@ router.post('/login', async (req, res) => {
     const accessToken = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
 
-    // Save refresh token to database
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
+    // Add refresh token to array (multi-device support)
+    // Select refreshTokens first since it's hidden by default
+    const userWithTokens = await User.findById(user._id).select('+refreshTokens');
+    userWithTokens.refreshTokens = userWithTokens.refreshTokens || [];
+    userWithTokens.refreshTokens.push(refreshToken);
+
+    // Optional: Limit number of devices (e.g., keep last 5)
+    if (userWithTokens.refreshTokens.length > 5) {
+      userWithTokens.refreshTokens.shift();
+    }
+
+    await userWithTokens.save({ validateBeforeSave: false });
+
 
     res.json({
       success: true,
@@ -123,10 +135,10 @@ router.post('/refresh', async (req, res) => {
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
 
-    // Check if user exists and token matches
-    const user = await User.findById(decoded.id).select('+refreshToken');
+    // Check if user exists and token is in their allowed list
+    const user = await User.findById(decoded.id).select('+refreshTokens');
 
-    if (!user || user.refreshToken !== refreshToken) {
+    if (!user || !user.refreshTokens.includes(refreshToken)) {
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
 
@@ -134,8 +146,9 @@ router.post('/refresh', async (req, res) => {
     const newAccessToken = generateToken(user._id);
     const newRefreshToken = generateRefreshToken(user._id);
 
-    // Save new refresh token
-    user.refreshToken = newRefreshToken;
+    // Rotate tokens: remove old one, add new one
+    user.refreshTokens = user.refreshTokens.filter(rt => rt !== refreshToken);
+    user.refreshTokens.push(newRefreshToken);
     await user.save({ validateBeforeSave: false });
 
     res.json({
@@ -143,6 +156,7 @@ router.post('/refresh', async (req, res) => {
       token: newAccessToken,
       refreshToken: newRefreshToken
     });
+
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
@@ -173,14 +187,27 @@ router.get('/me', protect, async (req, res) => {
 // @access  Private
 router.post('/logout', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
-    user.refreshToken = undefined;
+    const { refreshToken } = req.body;
+
+    const user = await User.findById(req.user._id).select('+refreshTokens');
+
+    if (refreshToken) {
+      // Remove specific token (current device)
+      user.refreshTokens = user.refreshTokens.filter(rt => rt !== refreshToken);
+    } else {
+      // If no token provided, we can't be sure which one to remove
+      // In a strict setup, you might require it. 
+      // For now, we'll just return success to clear frontend state, 
+      // or we could clear ALL if we want (not multi-device friendly)
+    }
+
     await user.save({ validateBeforeSave: false });
 
     res.json({
       success: true,
       message: 'Logged out successfully'
     });
+
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }
