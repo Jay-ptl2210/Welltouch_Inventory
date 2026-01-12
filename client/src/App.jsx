@@ -10,6 +10,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AddTransaction from './pages/AddTransaction';
 import Reports from './pages/Reports';
+import ManageParties from './pages/ManageParties';
+import AddParty from './pages/AddParty';
 
 import logo from './assets/logo.png';
 
@@ -51,70 +53,85 @@ function Navigation() {
   }
 
   return (
-    <nav className="bg-white shadow-lg sticky top-0 z-50">
+    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex-shrink-0 flex items-center">
-            <Link to="/">
-              <img src={logo} alt="Welltouch Inventory" className="h-12 w-auto" />
+            <Link to="/" className="flex items-center">
+              <img src={logo} alt="Welltouch" className="h-10 w-auto" />
+              <span className="ml-2 text-primary-600 font-bold text-xl">Welltouch</span>
             </Link>
           </div>
           <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
+            <div className="ml-10 flex items-center space-x-4">
               <Link
                 to="/"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/')
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/')
                   ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
                 Dashboard
               </Link>
               <Link
                 to="/products"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/products')
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/products')
                   ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
                 Products
               </Link>
               <Link
                 to="/manage-products"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/manage-products')
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/manage-products')
                   ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
                 Transactions
               </Link>
               <Link
                 to="/reports"
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${isActive('/reports')
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/reports')
                   ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
                 Reports
               </Link>
-              <div className="relative ml-4" ref={userMenuRef}>
+              <Link
+                to="/parties"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/parties')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Parties
+              </Link>
+
+              <div className="relative ml-3" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-primary-100 hover:text-primary-700 focus:outline-none"
+                  className="flex items-center space-x-2 text-sm font-medium text-gray-600 hover:text-primary-600 focus:outline-none transition-colors"
                 >
-                  <span className="max-w-[120px] truncate">{user?.name || 'User'}</span>
+                  <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold">
+                    {user?.name?.charAt(0) || 'U'}
+                  </div>
+                  <span>{user?.name || 'User'}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200 max-h-64 overflow-y-auto">
-                    <div className="px-4 py-2 text-sm text-gray-700 border-b break-words">
-                      {user?.email}
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50">
+                    <div className="px-4 py-2 text-xs text-gray-500 border-b">
+                      Logged in as<br />
+                      <span className="font-semibold text-gray-700">{user?.email}</span>
                     </div>
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                     >
                       Logout
                     </button>
@@ -126,7 +143,7 @@ function Navigation() {
           <div className="md:hidden">
             <button
               type="button"
-              className="bg-primary-600 inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-primary-700 focus:outline-none"
+              className="bg-slate-800 inline-flex items-center justify-center p-2 rounded text-slate-300 hover:text-white focus:outline-none"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -179,6 +196,16 @@ function Navigation() {
             >
               Reports
             </Link>
+            <Link
+              to="/parties"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/parties')
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                }`}
+            >
+              Parties
+            </Link>
             <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
               {user?.email}
             </div>
@@ -207,7 +234,7 @@ function AppContent() {
     >
       <div className="min-h-screen flex flex-col">
         <Navigation />
-        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 md:py-8 overflow-x-hidden flex-grow w-full">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-4 overflow-x-hidden flex-grow w-full">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -259,24 +286,43 @@ function AppContent() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/parties"
+              element={
+                <ProtectedRoute>
+                  <ManageParties />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/add-party"
+              element={
+                <ProtectedRoute>
+                  <AddParty />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </main>
 
         {/* Footer */}
         {isAuthenticated && (
-          <footer className="bg-white border-t border-gray-200 mt-auto">
-            <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-              <p className="text-center text-sm text-gray-500">
-                Make and manage by{' '}
+          <footer className="bg-white border-t border-gray-200 mt-auto py-6">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-gray-500 text-sm">
+                &copy; {new Date().getFullYear()} Welltouch Inventory. All rights reserved.
+              </p>
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-400 text-sm">v1.1.0</span>
                 <a
                   href="https://jayptlportfolio.netlify.app/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-primary-600 hover:text-primary-800 font-medium"
+                  className="text-primary-600 hover:text-primary-700 font-medium transition-colors"
                 >
                   Jay Patel
                 </a>
-              </p>
+              </div>
             </div>
           </footer>
         )}

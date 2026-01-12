@@ -8,9 +8,18 @@ const transactionSchema = new mongoose.Schema({
   },
   productType: {
     type: String,
-    enum: ['ST', 'TF'],
+    enum: ['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra'],
     required: true,
-    default: 'ST'
+    default: 'PPF TF'
+  },
+  party: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Party',
+    required: false
+  },
+  partyName: {
+    type: String,
+    trim: true
   },
   productId: {
     type: String,

@@ -8,19 +8,21 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const products = await Product.find({ user: req.user._id });
+    const products = await Product.find({ user: req.user._id }).populate('party', 'name');
 
     // Group products by name and size
     const dashboardMap = {};
 
     products.forEach(product => {
-      const type = product.type || 'ST';
-      const key = `${product.name}-${product.size}-${type}`;
+      const type = product.type || 'PPF TF';
+      const partyId = product.party?._id?.toString() || 'no-party';
+      const key = `${product.name}-${product.size}-${type}-${partyId}`;
       if (!dashboardMap[key]) {
         dashboardMap[key] = {
           name: product.name,
           size: product.size,
           type: type,
+          party: product.party,
           quantity: 0,
           packetsPerLinear: product.packetsPerLinear || 0,
           pcsPerPacket: product.pcsPerPacket || 0

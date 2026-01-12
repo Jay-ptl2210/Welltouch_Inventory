@@ -89,4 +89,9 @@ export const deleteTransaction = (id) => api.delete(`/transactions/${id}`);
 // Dashboard API
 export const getDashboard = () => api.get('/dashboard');
 
+// Parties API
+export const getParties = () => api.get('/parties');
+export const addParty = (party) => api.post('/parties', party);
+export const deleteParty = (id) => api.delete(`/parties/${id}`);
+
 export default api;

@@ -1,20 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addProduct } from '../services/api';
+import { addProduct, getParties } from '../services/api';
 
 function AddProduct() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     size: '',
-    type: 'ST',
+    type: 'PPF TF',
     packetsPerLinear: '',
     pcsPerPacket: '',
     quantity: '',
-    quantityUnit: 'linear' // linear, packet, pcs
+    quantityUnit: 'linear', // linear, packet, pcs
+    party: ''
   });
+  const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+
+  useEffect(() => {
+    loadParties();
+  }, []);
+
+  const loadParties = async () => {
+    try {
+      const response = await getParties();
+      setParties(response.data);
+    } catch (error) {
+      console.error('Failed to load parties', error);
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -37,18 +52,20 @@ function AddProduct() {
         packetsPerLinear: parseFloat(formData.packetsPerLinear) || 0,
         pcsPerPacket: parseFloat(formData.pcsPerPacket) || 0,
         quantity: parseFloat(formData.quantity) || 0,
-        quantityUnit: formData.quantityUnit
+        quantityUnit: formData.quantityUnit,
+        party: formData.party || undefined
       };
       await addProduct(productData);
       setMessage({ type: 'success', text: 'Product added successfully!' });
       setFormData({
         name: '',
         size: '',
-        type: 'ST',
+        type: 'PPF TF',
         packetsPerLinear: '',
         pcsPerPacket: '',
         quantity: '',
-        quantityUnit: 'linear'
+        quantityUnit: 'linear',
+        party: ''
       });
     } catch (error) {
       setMessage({
@@ -77,6 +94,28 @@ function AddProduct() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
+          <div>
+            <label htmlFor="party" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+              Party <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="party"
+              name="party"
+              required
+              value={formData.party}
+              onChange={handleChange}
+              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+            >
+              <option value="">Select a Party</option>
+              {parties.map(p => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Don't see your party? <span className="text-primary-600 cursor-pointer hover:underline" onClick={() => navigate('/parties')}>Create it here</span>
+            </p>
+          </div>
+
           <div>
             <label htmlFor="name" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
               Product Name <span className="text-red-500">*</span>
@@ -121,8 +160,11 @@ function AddProduct() {
                 onChange={handleChange}
                 className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
               >
-                <option value="ST">Stat (ST)</option>
-                <option value="TF">Tri Fold (TF)</option>
+                <option value="PPF TF">PPF TF</option>
+                <option value="PPF ST">PPF ST</option>
+                <option value="Cotton TF">Cotton TF</option>
+                <option value="Cotton ST">Cotton ST</option>
+                <option value="Ultra">Ultra</option>
               </select>
             </div>
           </div>

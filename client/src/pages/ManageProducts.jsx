@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProducts, addTransaction, getTransactions, deleteTransaction, updateTransaction } from '../services/api';
+import { getProducts, addTransaction, getTransactions, deleteTransaction, getParties } from '../services/api';
+import Pagination from '../components/Pagination';
 import { format } from 'date-fns';
 import { toPcs, fromPcs } from '../utils/calculations';
 
@@ -8,91 +9,55 @@ function ManageProducts() {
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
-    productName: '',
-    size: '',
-    type: 'produce',
+    productId: '',
+    type: 'delivered',
     quantity: '',
-    unit: 'pcs',
-    date: format(new Date(), 'yyyy-MM-dd'),
+    unit: 'packet',
+    date: new Date().toISOString().split('T')[0],
     note: ''
   });
   const [filters, setFilters] = useState({
-    product: '',
+    name: '',
     size: '',
-    type: '', // product type filter (ST/TF)
+    type: '',
     startDate: '',
     endDate: ''
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
+  const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [sizes, setSizes] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({
-    productName: '',
-    size: '',
-    type: 'produce',
-    quantity: '',
-    unit: 'pcs',
-    date: format(new Date(), 'yyyy-MM-dd'),
-    note: ''
-  });
-  const [editSizes, setEditSizes] = useState([]);
-
+  const [editingTransaction, setEditingTransaction] = useState(null);
 
 
   useEffect(() => {
-    loadProducts();
-    loadTransactions();
+    loadInitialData();
   }, []);
 
-  useEffect(() => {
-    if (formData.productName) {
-      const productSizes = [...new Set(
-        products
-          .filter(p => p.name === formData.productName)
-          .map(p => p.size)
-      )];
-      setSizes(productSizes);
-      if (!productSizes.includes(formData.size)) {
-        setFormData(prev => ({ ...prev, size: '' }));
-      }
-    } else {
-      setSizes([]);
-    }
-  }, [formData.productName, products]);
-
-  useEffect(() => {
-    if (editForm.productName) {
-      const productSizes = [...new Set(
-        products
-          .filter(p => p.name === editForm.productName)
-          .map(p => p.size)
-      )];
-      setEditSizes(productSizes);
-      if (!productSizes.includes(editForm.size)) {
-        setEditForm(prev => ({ ...prev, size: '' }));
-      }
-    } else {
-      setEditSizes([]);
-    }
-  }, [editForm.productName, products]);
-
-  const loadProducts = async () => {
+  const loadInitialData = async () => {
     try {
-      const response = await getProducts();
-      setProducts(response.data);
-    } catch (error) {
-      console.error('Failed to load products', error);
-    }
-  };
-
-  const loadTransactions = async () => {
-    try {
-      const response = await getTransactions();
-      setTransactions(response.data);
-    } catch (error) {
-      console.error('Failed to load transactions', error);
+      setLoading(true);
+      const [productsRes, transactionsRes, partiesRes] = await Promise.all([
+        getProducts(),
+        getTransactions(),
+        getParties()
+      ]);
+      console.log('Loaded products:', productsRes.data.length);
+      console.log('Loaded transactions:', transactionsRes.data.length);
+      if (transactionsRes.data.length > 0) {
+        console.log('Sample transaction:', transactionsRes.data[0]);
+      }
+      setProducts(productsRes.data);
+      setTransactions(transactionsRes.data);
+      setParties(partiesRes.data);
+    } catch (err) {
+      console.error('Error loading data:', err);
+      setMessage({ type: 'error', text: 'Failed to synchronize ledger data' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -110,6 +75,7 @@ function ManageProducts() {
       ...prev,
       [name]: value
     }));
+    setCurrentPage(1);
   };
 
   const handleSubmit = async (e) => {
@@ -118,576 +84,501 @@ function ManageProducts() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Find the product that matches both name and size
-      const selectedProduct = products.find(
-        p => p.name === formData.productName && p.size === formData.size
-      );
-      if (!selectedProduct) {
-        throw new Error('Product with selected name and size not found');
-      }
+      const selectedProduct = products.find(p => p._id === formData.productId);
+      if (!selectedProduct) throw new Error('Product not found');
 
-      // Validate delivery quantity before submitting
-      const deliveryQuantityPcs = toPcs(formData.quantity, formData.unit, selectedProduct);
-      if (formData.type === 'delivered' && deliveryQuantityPcs > selectedProduct.quantity) {
-        setMessage({
-          type: 'error',
-          text: `Insufficient stock! Current stock: ${selectedProduct.quantity.toFixed(2)} pcs, Delivery quantity: ${deliveryQuantityPcs.toFixed(2)} pcs`
+      // Note: toPcs expects (quantity, unit, productLike)
+      const pcs = toPcs(formData.quantity, formData.unit, selectedProduct);
+
+      if (editingTransaction) {
+        await updateTransaction(editingTransaction._id, {
+          productId: formData.productId,
+          productName: selectedProduct.name,
+          size: selectedProduct.size,
+          type: formData.type,
+          quantity: formData.quantity,
+          unit: formData.unit,
+          date: formData.date,
+          note: formData.note
         });
-        setLoading(false);
-        return;
+        setMessage({ type: 'success', text: 'Transaction updated successfully' });
+      } else {
+        await addTransaction({
+          productId: selectedProduct._id,
+          productName: selectedProduct.name,
+          size: selectedProduct.size,
+          type: formData.type,
+          quantity: formData.quantity,
+          unit: formData.unit,
+          date: formData.date,
+          note: formData.note
+        });
+        setMessage({ type: 'success', text: 'Transaction recorded successfully' });
       }
 
-      const transactionDate = formData.date
-        ? new Date(formData.date).toISOString()
-        : new Date().toISOString();
 
-      // Use _id if available, otherwise fall back to id (Mongoose converts _id to id in JSON)
-      const productId = selectedProduct._id || selectedProduct.id;
-
-      if (!productId) {
-        throw new Error('Product ID not found');
-      }
-
-      await addTransaction({
-        productId: productId,
-        productName: formData.productName,
-        size: formData.size,
-        type: formData.type,
-        quantity: formData.quantity,
-        unit: formData.unit,
-        date: transactionDate,
-        note: formData.note || ''
-      });
-
-      setMessage({ type: 'success', text: 'Transaction recorded successfully!' });
-      setFormData(prev => ({
-        ...prev,
-        quantity: '',
-        unit: 'pcs',
-        note: '',
-        date: format(new Date(), 'yyyy-MM-dd')
-      }));
-      await loadProducts();
-      await loadTransactions();
-    } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Failed to record transaction'
-      });
+      resetForm();
+      setShowModal(false);
+      loadInitialData();
+    } catch (err) {
+      setMessage({ type: 'error', text: err.response?.data?.error || err.message });
     } finally {
       setLoading(false);
     }
   };
 
-  const startEditTransaction = (transaction) => {
-    setEditingId(transaction._id || transaction.id);
-    setEditForm({
-      productName: transaction.productName,
-      size: transaction.size,
+  const handleEdit = (transaction) => {
+    setEditingTransaction(transaction);
+    setFormData({
+      productId: transaction.product?._id || transaction.product,
       type: transaction.type,
-      quantity: transaction.quantity.toString(),
+      quantity: transaction.quantity,
       unit: transaction.unit || 'pcs',
-      date: format(new Date(transaction.date), 'yyyy-MM-dd'),
+      date: new Date(transaction.date).toISOString().split('T')[0],
       note: transaction.note || ''
     });
+    setShowModal(true);
     setMessage({ type: '', text: '' });
   };
 
-  const cancelEditTransaction = () => {
-    setEditingId(null);
-    setEditForm({
-      productName: '',
-      size: '',
-      type: 'produce',
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this transaction?')) return;
+    try {
+      await deleteTransaction(id);
+      loadInitialData();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to delete transaction' });
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      productId: '',
+      type: 'delivered',
       quantity: '',
-      unit: 'pcs',
-      date: format(new Date(), 'yyyy-MM-dd'),
+      unit: 'packet',
+      date: new Date().toISOString().split('T')[0],
       note: ''
     });
+    setEditingTransaction(null);
+    setMessage({ type: '', text: '' });
   };
 
-  const handleEditChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleSaveTransaction = async (transaction) => {
-    try {
-      setLoading(true);
-      setMessage({ type: '', text: '' });
-
-      // Find the product matching selected name and size
-      const targetProduct = products.find(
-        p => p.name === editForm.productName && p.size === editForm.size
-      );
-
-      if (!targetProduct) {
-        throw new Error('Selected product and size not found');
-      }
-
-      const resolvedProductId = targetProduct._id || targetProduct.id;
-
-      const parsedQuantity = Number.parseFloat(editForm.quantity);
-      if (Number.isNaN(parsedQuantity) || parsedQuantity < 0) {
-        throw new Error('Quantity must be a positive number');
-      }
-
-      const deltaPcs = toPcs(parsedQuantity, editForm.unit, targetProduct);
-
-      // If delivered, validate stock using latest product data
-      if (editForm.type === 'delivered' && deltaPcs > targetProduct.quantity) {
-        throw new Error(
-          `Insufficient stock! Current stock: ${targetProduct.quantity.toFixed(2)} pcs, Delivery quantity: ${deltaPcs.toFixed(2)} pcs`
-        );
-      }
-
-      const transactionDate = editForm.date
-        ? new Date(editForm.date).toISOString()
-        : new Date().toISOString();
-
-      await updateTransaction(transaction._id || transaction.id, {
-        productId: resolvedProductId,
-        productName: editForm.productName,
-        size: editForm.size,
-        type: editForm.type,
-        quantity: parsedQuantity,
-        unit: editForm.unit,
-        date: transactionDate,
-        note: editForm.note || ''
-      });
-
-      setMessage({ type: 'success', text: 'Transaction updated successfully!' });
-      setEditingId(null);
-      await loadProducts();
-      await loadTransactions();
-    } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || error.message || 'Failed to update transaction'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteTransaction = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this transaction?')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setMessage({ type: '', text: '' });
-      await deleteTransaction(id);
-      setMessage({ type: 'success', text: 'Transaction deleted successfully!' });
-      await loadProducts();
-      await loadTransactions();
-    } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.error || 'Failed to delete transaction'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredTransactions = transactions
-    .filter(transaction => {
-      if (filters.product && transaction.productName !== filters.product) return false;
-      if (filters.size && transaction.size !== filters.size) return false;
-      if (filters.type && transaction.productType !== filters.type) return false;
-
-      if (filters.startDate || filters.endDate) {
-        const transactionDate = new Date(transaction.date).toISOString().split('T')[0]; // YYYY-MM-DD
-        if (filters.startDate && transactionDate < filters.startDate) return false;
-        if (filters.endDate && transactionDate > filters.endDate) return false;
-      }
+    .filter(t => {
+      const p = t.product;
+      if (!p) return false;
+      if (filters.name && !p.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
+      if (filters.size && p.size !== filters.size) return false;
+      if (filters.type && t.type !== filters.type) return false;
+      if (filters.startDate && new Date(t.date) < new Date(filters.startDate)) return false;
+      if (filters.endDate && new Date(t.date) > new Date(filters.endDate)) return false;
       return true;
     })
-    .sort((a, b) => {
-      // Sort by date and time descending (newest first)
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      const dateDiff = dateB.getTime() - dateA.getTime();
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
 
-      // If dates are exactly the same, sort by createdAt (newest first)
-      if (dateDiff === 0) {
-        const createdAtA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const createdAtB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return createdAtB - createdAtA; // Newest first
-      }
+  const totalItems = filteredTransactions.length;
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
 
-      return dateDiff; // Newest date first
-    });
+  const selectedProduct = products.find(p => p._id === formData.productId);
 
-  const uniqueProductNames = [...new Set(products.map(p => p.name))];
-  const uniqueSizes = [...new Set(products.map(p => p.size))];
+  // Calculate current stock in the selected unit for the selected product
+  const calculateSlots = () => {
+    if (!selectedProduct) {
+      return '0.0';
+    }
+
+    // Use the product's quantity field (stored in PCS)
+    const totalPcs = selectedProduct.quantity || 0;
+
+    // Convert to the selected unit
+    if (formData.unit === 'pcs') {
+      return totalPcs.toFixed(1);
+    } else if (formData.unit === 'packet') {
+      const packets = totalPcs / selectedProduct.pcsPerPacket;
+      return packets.toFixed(1);
+    } else { // linear
+      const pcsPerLinear = selectedProduct.packetsPerLinear * selectedProduct.pcsPerPacket;
+      const linear = pcsPerLinear > 0 ? totalPcs / pcsPerLinear : 0;
+      return linear.toFixed(1);
+    }
+  };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="bg-white rounded-lg shadow-lg p-3 md:p-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4 mb-3 md:mb-6">
-          <div>
-            <h2 className="text-xl md:text-3xl font-bold text-gray-800">Transactions</h2>
-            <p className="text-sm md:text-base text-gray-600">Record produce and delivery transactions</p>
+    <div className="container mx-auto px-4 py-8 max-w-[1600px]">
+      {/* Header with Add Transaction Button */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
+          <p className="text-gray-500 mt-1">Manage inventory movements</p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Transaction
+        </button>
+      </div>
+
+      {/* Transaction Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8 md:p-10">
+              <h2 className="text-3xl font-bold text-gray-900 mb-8">
+                {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
+              </h2>
+
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {message.text && (
+                  <div className={`p-4 rounded-xl text-sm font-bold border ${message.type === 'success' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                    {message.text}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Product Dropdown */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Product <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="productId"
+                      required
+                      value={formData.productId}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 bg-white"
+                    >
+                      <option value="">Select a product</option>
+                      {products.map(p => (
+                        <option key={p._id} value={p._id}>
+                          {p.name} - {p.size}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Size (read-only display) */}
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Size <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedProduct?.size || ''}
+                      placeholder="280 mm"
+                      className="w-full px-4 py-3 border border-gray-100 rounded-xl bg-gray-50 text-gray-500 font-medium outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Type, Pkts/Lin, Pcs/Pkt Row */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Type</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedProduct?.type || 'Stat (ST)'}
+                      className="w-full px-4 py-3 border border-gray-100 rounded-xl bg-gray-50 text-gray-500 font-medium outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Pkts/Lin <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedProduct?.packetsPerLinear || ''}
+                      placeholder="48"
+                      className="w-full px-4 py-3 border border-gray-100 rounded-xl bg-gray-50 text-gray-500 font-medium text-center outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Pcs/Pkt <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={selectedProduct?.pcsPerPacket || ''}
+                      placeholder="18"
+                      className="w-full px-4 py-3 border border-gray-100 rounded-xl bg-gray-50 text-gray-500 font-medium text-center outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Transaction Type and Unit */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Transaction Type <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="type"
+                      required
+                      value={formData.type}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 bg-white"
+                    >
+                      <option value="produce">Produce (Add)</option>
+                      <option value="delivered">Delivered (Subtract)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Unit <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="unit"
+                      required
+                      value={formData.unit}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 bg-white"
+                    >
+                      <option value="linear">Linear</option>
+                      <option value="packet">Packets</option>
+                      <option value="pcs">Pieces</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Quantity with Slots display and Date */}
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Quantity <span className="text-red-500">*</span> <span className="text-xs text-gray-400 font-normal">(Slots: {calculateSlots()})</span>
+                    </label>
+                    <input
+                      type="number"
+                      name="quantity"
+                      required
+                      step="0.01"
+                      min="0"
+                      value={formData.quantity}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700"
+                      placeholder="Enter quantity"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Date</label>
+                    <input
+                      type="date"
+                      name="date"
+                      value={formData.date}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                {/* Note */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Note <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <textarea
+                    name="note"
+                    value={formData.note}
+                    onChange={handleFormChange}
+                    rows="2"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 resize-none"
+                    placeholder="Add a note (optional)"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }}
+                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-4 rounded-xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex-[2] bg-[#0081BC] hover:bg-[#006ca0] text-white font-bold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white/20 border-t-white"></div>
+                    ) : (
+                      editingTransaction ? 'Update Transaction' : 'Record Transaction'
+                    )}
+                  </button>
+
+                </div>
+              </form>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate('/add-transaction')}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-            >
-              Add Transaction
-            </button>
+        </div>
+      )}
+
+      {/* Transaction History */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-50">
+          <h2 className="text-2xl font-bold text-gray-900">Transaction History</h2>
+          <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+            Total: {totalItems}
           </div>
         </div>
 
-        {message.text && (
-          <div
-            className={`mb-3 md:mb-4 px-3 md:px-4 py-2 md:py-3 text-sm md:text-base rounded ${message.type === 'success'
-              ? 'bg-green-100 border border-green-400 text-green-700'
-              : 'bg-red-100 border border-red-400 text-red-700'
-              }`}
-          >
-            {message.text}
-          </div>
-        )}
-
-
-      </div>
-
-      <div className="bg-white rounded-lg shadow-lg p-3 md:p-8">
-        <h3 className="text-lg md:text-2xl font-bold text-gray-800 mb-4 md:mb-6">Transaction History</h3>
-
-        <div className="mb-4 md:mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 overflow-hidden">
-          <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-            <label htmlFor="filter-product" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              Filter by Product
-            </label>
-            <select
-              id="filter-product"
-              name="product"
-              value={filters.product}
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-10">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Product</label>
+            <input
+              type="text"
+              name="name"
+              value={filters.name}
               onChange={handleFilterChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-              style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
-            >
-              <option value="">All Products</option>
-              {uniqueProductNames.map(name => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+              placeholder="Search..."
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
+            />
           </div>
-
-          <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-            <label htmlFor="filter-size" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              Filter by Size
-            </label>
-            <select
-              id="filter-size"
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Size</label>
+            <input
+              type="text"
               name="size"
               value={filters.size}
               onChange={handleFilterChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-              style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
-            >
-              <option value="">All Sizes</option>
-              {uniqueSizes.map(size => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
+              placeholder="All"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
+            />
           </div>
-
-          <div className="relative overflow-hidden" style={{ maxWidth: '100%' }}>
-            <label htmlFor="filter-type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              Filter by Type
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Type</label>
             <select
-              id="filter-type"
               name="type"
               value={filters.type}
               onChange={handleFilterChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-              style={{ maxWidth: '100%', boxSizing: 'border-box', width: '100%' }}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
             >
-              <option value="">All Types</option>
-              <option value="ST">Stat (ST)</option>
-              <option value="TF">Tri Fold (TF)</option>
+              <option value="">All</option>
+              <option value="produce">Produced</option>
+              <option value="delivered">Delivered</option>
             </select>
           </div>
-
-          <div>
-            <label htmlFor="filter-startDate" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              From Date
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">From</label>
             <input
               type="date"
-              id="filter-startDate"
               name="startDate"
               value={filters.startDate}
               onChange={handleFilterChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
             />
           </div>
-
-          <div>
-            <label htmlFor="filter-endDate" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
-              To Date
-            </label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">To</label>
             <input
               type="date"
-              id="filter-endDate"
               name="endDate"
               value={filters.endDate}
               onChange={handleFilterChange}
-              className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
             />
           </div>
         </div>
 
-        {filteredTransactions.length === 0 ? (
-          <div className="text-center py-12">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No transactions</h3>
-            <p className="mt-1 text-sm text-gray-500">Transaction history will appear here.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto -mx-4 md:mx-0">
-            <div className="inline-block min-w-full align-middle">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date & Time
-                    </th>
-                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Product
-                    </th>
-                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Size
-                    </th>
-                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Prod Type
-                    </th>
-                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type
-                    </th>
-                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Quantity
-                    </th>
-                    <th className="px-3 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Note
-                    </th>
-                    <th className="px-3 md:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredTransactions.map((transaction, index) => (
-                    <tr key={transaction._id || transaction.id || `transaction-${index}`} className="hover:bg-gray-50">
-                      {(() => {
-                        const isEditing = editingId === (transaction._id || transaction.id);
-                        return (
-                          <>
-                            <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {isEditing ? (
-                                <input
-                                  type="date"
-                                  name="date"
-                                  value={editForm.date}
-                                  onChange={handleEditChange}
-                                  className="px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                                />
-                              ) : (
-                                <span className="font-medium">{format(new Date(transaction.date), 'dd-MM-yyyy')}</span>
-                              )}
-                            </td>
-                            <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {isEditing ? (
-                                <select
-                                  name="productName"
-                                  value={editForm.productName}
-                                  onChange={handleEditChange}
-                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                                >
-                                  <option value="">Select product</option>
-                                  {uniqueProductNames.map(name => (
-                                    <option key={name} value={name}>
-                                      {name}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                transaction.productName
-                              )}
-                            </td>
-                            <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {isEditing ? (
-                                <select
-                                  name="size"
-                                  value={editForm.size}
-                                  onChange={handleEditChange}
-                                  disabled={!editForm.productName}
-                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                >
-                                  <option value="">Select size</option>
-                                  {editSizes.map(size => (
-                                    <option key={size} value={size}>
-                                      {size}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : (
-                                transaction.size
-                              )}
-                            </td>
-                            <td className="px-3 md:px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${transaction.productType === 'ST' ? 'bg-blue-100 text-blue-800' :
-                                transaction.productType === 'TF' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
-                                }`}>
-                                {transaction.productType === 'ST' ? 'Stat' :
-                                  transaction.productType === 'TF' ? 'Tri Fold' : '-'}
-                              </span>
-                            </td>
-                            <td className="px-3 md:px-6 py-4 whitespace-nowrap">
-                              {isEditing ? (
-                                <select
-                                  name="type"
-                                  value={editForm.type}
-                                  onChange={handleEditChange}
-                                  className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                                >
-                                  <option value="produce">Produce (Add)</option>
-                                  <option value="delivered">Delivered (Subtract)</option>
-                                </select>
-                              ) : (
-                                <span
-                                  className={`px-2 inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full ${transaction.type === 'produce'
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-red-100 text-red-800'
-                                    }`}
-                                  title={transaction.type === 'produce' ? 'Produce' : 'Delivered'}
-                                >
-                                  {transaction.type === 'produce' ? 'P' : 'D'}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 md:px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {isEditing ? (
-                                <div className="flex items-center space-x-2">
-                                  <select
-                                    name="unit"
-                                    value={editForm.unit}
-                                    onChange={handleEditChange}
-                                    className="px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 bg-white"
-                                  >
-                                    <option value="linear">Linear</option>
-                                    <option value="packet">Packets</option>
-                                    <option value="pcs">Pieces</option>
-                                  </select>
-                                  <input
-                                    type="number"
-                                    name="quantity"
-                                    step="0.01"
-                                    min="0"
-                                    value={editForm.quantity}
-                                    onChange={handleEditChange}
-                                    className="w-20 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500"
-                                  />
-                                </div>
-                              ) : (
-                                <span className="font-medium">
-                                  {transaction.type === 'produce' ? '+' : '-'}
-                                  {transaction.quantity.toFixed(2)} {transaction.unit || 'pcs'}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 md:px-6 py-4 text-sm text-gray-500">
-                              {isEditing ? (
-                                <textarea
-                                  name="note"
-                                  rows="2"
-                                  value={editForm.note}
-                                  onChange={handleEditChange}
-                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-1 focus:ring-primary-500 focus:border-primary-500 resize-none"
-                                  placeholder="Add a note (optional)"
-                                />
-                              ) : transaction.note ? (
-                                <span className="break-words">{transaction.note}</span>
-                              ) : (
-                                <span className="text-gray-400 italic">-</span>
-                              )}
-                            </td>
-                            <td className="px-3 md:px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                              {isEditing ? (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSaveTransaction(transaction)}
-                                    disabled={loading}
-                                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
-                                  >
-                                    {loading ? 'Saving...' : 'Save'}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={cancelEditTransaction}
-                                    className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                </>
-                              ) : (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={() => startEditTransaction(transaction)}
-                                    className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteTransaction(transaction._id || transaction.id)}
-                                    disabled={loading}
-                                    className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
-                                  >
-                                    Delete
-                                  </button>
-                                </>
-                              )}
-                            </td>
-                          </>
-                        );
-                      })()}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        {/* Table */}
+        <div className="overflow-x-auto -mx-8">
+          <table className="min-w-full divide-y divide-gray-100">
+            <thead className="bg-gray-50/50">
+              <tr>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Product</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Size</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Type</th>
+                <th className="px-8 py-5 text-center text-[11px] font-black text-gray-400 uppercase tracking-widest">Effect</th>
+
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Quantity</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Note</th>
+                <th className="px-8 py-5 text-right text-[11px] font-black text-gray-400 uppercase tracking-widest">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-50">
+              {paginatedTransactions.map((t, idx) => (
+                <tr key={t._id || idx} className="hover:bg-indigo-50/10 transition-all">
+                  <td className="px-8 py-6 whitespace-nowrap">
+                    <div className="text-sm font-bold text-gray-900">{format(new Date(t.date), 'dd-MM-yyyy')}</div>
+                  </td>
+                  <td className="px-8 py-6 whitespace-nowrap">
+                    <div className="text-sm font-bold text-gray-800">{t.product?.name}</div>
+                  </td>
+                  <td className="px-8 py-6 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-500">{t.product?.size}</div>
+                  </td>
+                  <td className="px-8 py-6 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-400">{t.product?.type || '-'}</div>
+                  </td>
+                  <td className="px-8 py-6 text-center whitespace-nowrap">
+                    <div className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold ${t.type === 'produce' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                      {t.type === 'produce' ? 'P' : 'D'}
+                    </div>
+                  </td>
+                  <td className="px-8 py-6 whitespace-nowrap">
+                    <div className={`text-sm font-extrabold ${t.type === 'produce' ? 'text-green-700' : 'text-red-700'}`}>
+                      {t.type === 'produce' ? '+' : '-'}{t.quantity.toFixed(1)} <span className="text-[10px] opacity-60 uppercase">{t.unit || 'pcs'}</span>
+                    </div>
+
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="text-xs text-gray-400 line-clamp-1 max-w-[150px]">{t.note || '-'}</div>
+                  </td>
+                  <td className="px-8 py-6 text-right whitespace-nowrap flex justify-end gap-2">
+                    <button
+                      onClick={() => handleEdit(t)}
+                      className="p-2 text-indigo-400 hover:text-indigo-600 transition-colors"
+                      title="Edit"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => handleDelete(t._id || t.id)}
+                      className="p-2 text-red-400 hover:text-red-600 transition-colors"
+                      title="Delete"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </td>
+
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="pt-8">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
+        </div>
       </div>
     </div>
   );

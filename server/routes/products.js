@@ -27,7 +27,9 @@ const toPcs = (quantity, unit, productLike) => {
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const products = await Product.find({ user: req.user._id }).sort({ createdAt: -1 });
+    const products = await Product.find({ user: req.user._id })
+      .populate('party', 'name')
+      .sort({ createdAt: -1 });
     res.json(products);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -66,7 +68,8 @@ router.post('/', protect, async (req, res) => {
       quantityUnit = 'linear',
       packetsPerLinear,
       pcsPerPacket,
-      type = 'ST'
+      type = 'PPF TF',
+      party
     } = req.body;
 
     if (!name || !size || quantity === undefined) {
@@ -82,8 +85,9 @@ router.post('/', protect, async (req, res) => {
       name,
       size,
       type,
+      party: party || undefined,
       user: req.user._id
-    });
+    }).populate('party', 'name');
 
     const incomingPcs = toPcs(quantity, quantityUnit, { packetsPerLinear, pcsPerPacket });
 
@@ -109,6 +113,8 @@ router.post('/', protect, async (req, res) => {
         date: new Date(),
         note: 'Manual stock addition (Add Product form)',
         productType: type,
+        party: existingProduct.party,
+        partyName: existingProduct.party ? existingProduct.party.name : undefined,
         user: req.user._id
       });
 
@@ -123,6 +129,7 @@ router.post('/', protect, async (req, res) => {
       packetsPerLinear,
       pcsPerPacket,
       type,
+      party,
       user: req.user._id
     });
 
@@ -149,7 +156,8 @@ router.put('/:id', protect, async (req, res) => {
       packetsPerLinear,
       pcsPerPacket,
       previousStock,
-      type
+      type,
+      party
     } = req.body;
 
     const product = await Product.findOne({
@@ -166,6 +174,7 @@ router.put('/:id', protect, async (req, res) => {
     if (packetsPerLinear !== undefined) product.packetsPerLinear = Number(packetsPerLinear);
     if (pcsPerPacket !== undefined) product.pcsPerPacket = Number(pcsPerPacket);
     if (type !== undefined) product.type = type;
+    if (party !== undefined) product.party = party;
 
     if (quantity !== undefined) {
       const newPcs = toPcs(quantity, quantityUnit || 'pcs', {
@@ -188,6 +197,8 @@ router.put('/:id', protect, async (req, res) => {
           date: new Date(),
           note: `Manual stock adjustment from ${product.quantity} to ${newPcs} pcs`,
           productType: product.type,
+          party: product.party,
+          partyName: undefined, // Will be populated below if needed
           user: req.user._id
         });
         product.quantity = newPcs;
@@ -203,15 +214,20 @@ router.put('/:id', protect, async (req, res) => {
 
     await product.save();
 
-    // If name, size or type changed, propagate to related transactions for display consistency
-    if (name !== undefined || size !== undefined || type !== undefined) {
+    // If name, size, type or party changed, propagate to related transactions for display consistency
+    if (name !== undefined || size !== undefined || type !== undefined || party !== undefined) {
+      // Reload product to get party name if it was a change
+      const updatedProduct = await Product.findById(product._id).populate('party', 'name');
+
       await Transaction.updateMany(
         { product: product._id, user: req.user._id },
         {
           $set: {
-            productName: product.name,
-            size: product.size,
-            productType: product.type
+            productName: updatedProduct.name,
+            size: updatedProduct.size,
+            productType: updatedProduct.type,
+            party: updatedProduct.party ? updatedProduct.party._id : undefined,
+            partyName: updatedProduct.party ? updatedProduct.party.name : undefined
           }
         }
       );

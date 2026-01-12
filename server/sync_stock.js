@@ -19,7 +19,7 @@ const syncImproved = async () => {
             const txs = transactions.filter(tx =>
                 (tx.product && tx.product.toString() === product._id.toString()) ||
                 (tx.productId === product._id.toString()) ||
-                (tx.productName === product.name && tx.size === product.size && (tx.productType || 'ST') === (product.type || 'ST'))
+                (tx.productName === product.name && tx.size === product.size && (tx.productType || 'PPF TF') === (product.type || 'PPF TF'))
             );
 
             let produced = 0;
@@ -35,7 +35,7 @@ const syncImproved = async () => {
             // previousStock = Current Quantity - Produced + Delivered
             const targetPreviousStock = product.quantity - produced + delivered;
 
-            console.log(`Product: ${product.name} (${product.size}) [${product.type || 'ST'}]`);
+            console.log(`Product: ${product.name} (${product.size}) [${product.type || 'PPF TF'}]`);
             console.log(`  Current Qty: ${product.quantity}`);
             console.log(`  Total Produced: ${produced}`);
             console.log(`  Total Delivered: ${delivered}`);

@@ -41,15 +41,20 @@ const productSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['ST', 'TF'],
+    enum: ['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra'],
     required: true,
-    default: 'ST'
+    default: 'PPF TF'
+  },
+  party: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Party',
+    required: false // Optional for migration, will enforce in routes later
   }
 }, {
   timestamps: true
 });
 
-// Compound index to ensure unique product name + size + type per user
-productSchema.index({ name: 1, size: 1, type: 1, user: 1 }, { unique: true });
+// Compound index to ensure unique product name + size + type + party per user
+productSchema.index({ name: 1, size: 1, type: 1, party: 1, user: 1 }, { unique: true });
 
 module.exports = mongoose.model('Product', productSchema);

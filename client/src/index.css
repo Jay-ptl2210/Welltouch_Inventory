@@ -9,191 +9,25 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 100vh;
-  max-width: 100vw;
-  overflow-x: hidden;
-  position: relative;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f3f4f6;
+  /* Lighter background */
+  color: #1f2937;
 }
 
 #root {
   min-height: 100vh;
-  max-width: 100vw;
-  overflow-x: hidden;
-  position: relative;
 }
 
-/* Fix dropdown overflow on mobile */
-select {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+/* Pagination Styles */
+.pagination-btn {
+  @apply px-3 py-1 border rounded text-sm transition-colors;
 }
 
-/* Ensure dropdowns stay within viewport */
-.relative {
-  position: relative;
+.pagination-btn-active {
+  @apply bg-primary-600 text-white border-primary-600;
 }
 
-/* Mobile dropdown improvements */
-@media (max-width: 768px) {
-  /* Prevent body and root overflow */
-  html, body {
-    overflow-x: hidden;
-    max-width: 100vw;
-    position: relative;
-  }
-  
-  #root {
-    overflow-x: hidden;
-    max-width: 100vw;
-  }
-  
-  select {
-    font-size: 16px; /* Prevents zoom on iOS */
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    position: relative;
-    z-index: 1;
-  }
-  
-  /* Aggressively contain all relative containers */
-  .relative {
-    max-width: 100%;
-    overflow: hidden;
-    position: relative;
-    contain: layout style;
-  }
-  
-  .relative select {
-    max-width: 100%;
-    box-sizing: border-box;
-    width: 100%;
-  }
-  
-  /* Fix table overflow on mobile */
-  .overflow-x-auto {
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-    overflow-x: auto;
-    max-width: 100%;
-  }
-  
-  /* Ensure navigation dropdowns stay in viewport */
-  nav .relative {
-    position: relative;
-    max-width: 100%;
-    overflow: hidden;
-  }
-  
-  nav .absolute {
-    position: absolute;
-    right: 0;
-    left: auto;
-    max-width: calc(100vw - 2rem);
-    z-index: 1000;
-  }
-  
-  /* Aggressively contain form and grid containers */
-  form,
-  .grid,
-  .space-y-6 > div {
-    max-width: 100%;
-    overflow-x: hidden;
-    position: relative;
-  }
-  
-  form .relative,
-  .grid .relative {
-    position: relative;
-    max-width: 100%;
-    overflow: hidden;
-    contain: layout;
-  }
-  
-  /* Fix select dropdown options on mobile */
-  select option {
-    max-width: 100%;
-    word-wrap: break-word;
-    white-space: normal;
-  }
-  
-  /* Container constraints */
-  .max-w-7xl {
-    max-width: 100vw;
-    padding-left: 1rem;
-    padding-right: 1rem;
-    overflow-x: hidden;
-  }
-  
-  /* Table responsive improvements */
-  table {
-    font-size: 0.875rem;
-    max-width: 100%;
-  }
-  
-  table th,
-  table td {
-    padding: 0.5rem;
-    white-space: nowrap;
-  }
-  
-  /* Container padding for mobile - reduced */
-  main {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    max-width: 100vw;
-    overflow-x: hidden;
-    box-sizing: border-box;
-  }
-  
-  /* Ensure all cards are contained - CRITICAL */
-  .bg-white.rounded-lg,
-  .bg-white {
-    max-width: 100%;
-    overflow-x: hidden;
-    box-sizing: border-box;
-    position: relative;
-    contain: layout style;
-  }
-  
-  /* Reduce spacing on mobile */
-  .space-y-4 > * + * {
-    margin-top: 1rem;
-  }
-  
-  .space-y-6 > * + * {
-    margin-top: 1.5rem;
-  }
-  
-  /* Ensure all parent containers are contained */
-  .space-y-6 {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-  
-  /* Grid containers must be contained */
-  .grid {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-  
-  /* Specific fix for filter sections */
-  .mb-6.grid {
-    max-width: 100%;
-    overflow-x: hidden;
-  }
-  
-  .mb-6.grid .relative {
-    max-width: 100%;
-    overflow: hidden;
-  }
+.pagination-btn-inactive {
+  @apply bg-white text-gray-700 hover:bg-gray-50 border-gray-300;
 }

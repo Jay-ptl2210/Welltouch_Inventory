@@ -22,7 +22,7 @@ const diagnostic = async () => {
             const txs = transactions.filter(tx =>
                 (tx.product && tx.product.toString() === product._id.toString()) ||
                 (tx.productId === product._id.toString()) ||
-                (tx.productName === product.name && tx.size === product.size && (tx.productType || 'ST') === (product.type || 'ST'))
+                (tx.productName === product.name && tx.size === product.size && (tx.productType || 'PPF TF') === (product.type || 'PPF TF'))
             );
 
             let produced = 0;
@@ -75,7 +75,7 @@ const diagnostic = async () => {
             const hasMatch = products.some(p =>
                 (tx.product && tx.product.toString() === p._id.toString()) ||
                 (tx.productId === p._id.toString()) ||
-                (tx.productName === p.name && tx.size === p.size && (tx.productType || 'ST') === (p.type || 'ST'))
+                (tx.productName === p.name && tx.size === p.size && (tx.productType || 'PPF TF') === (p.type || 'PPF TF'))
             );
             return !hasMatch;
         });

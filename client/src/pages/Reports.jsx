@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { getProducts, getTransactions } from '../services/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import { getProducts, getTransactions, getParties } from '../services/api';
+import Pagination from '../components/Pagination';
 import { format } from 'date-fns';
-import { fromPcs } from '../utils/calculations';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logo from '../assets/logo.png';
@@ -11,13 +11,17 @@ function Reports() {
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filters, setFilters] = useState({
-        productName: '',
+        startDate: format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd'),
+        endDate: format(new Date(), 'yyyy-MM-dd'),
+        name: '',
         size: '',
         type: '',
-        startDate: '',
-        endDate: ''
+        party: ''
     });
+    const [parties, setParties] = useState([]);
     const [reportData, setReportData] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 12;
 
     useEffect(() => {
         loadData();
@@ -26,14 +30,16 @@ function Reports() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [productsRes, transactionsRes] = await Promise.all([
+            const [pRes, tRes, partiesRes] = await Promise.all([
                 getProducts(),
-                getTransactions()
+                getTransactions(),
+                getParties()
             ]);
-            setProducts(productsRes.data);
-            setTransactions(transactionsRes.data);
-        } catch (error) {
-            console.error('Failed to load data for reports', error);
+            setProducts(pRes.data);
+            setTransactions(tRes.data);
+            setParties(partiesRes.data);
+        } catch (err) {
+            console.error(err);
         } finally {
             setLoading(false);
         }
@@ -45,509 +51,471 @@ function Reports() {
             ...prev,
             [name]: value
         }));
+        setCurrentPage(1);
     };
 
+    const uniqueSizes = useMemo(() => [...new Set(products.map(p => p.size))], [products]);
+
     useEffect(() => {
-        if (loading) return;
+        if (!products.length) return;
 
-        // 1. Identify which products to include based on filters
-        const includedProducts = products.filter(p => {
-            if (filters.productName && p.name !== filters.productName) return false;
-            if (filters.size && p.size !== filters.size) return false;
-            if (filters.type && p.type !== filters.type) return false;
-            return true;
-        });
+        const start = new Date(filters.startDate);
+        const end = new Date(filters.endDate);
+        end.setHours(23, 59, 59, 999);
 
-        const report = includedProducts.map(product => {
-            const txsForProduct = transactions.filter(tx =>
-                (tx.product === product._id || tx.productId === product._id) ||
-                (tx.productName === product.name && tx.size === product.size && (tx.productType || 'ST') === (product.type || 'ST'))
-            );
+        const report = products
+            .filter(p => {
+                if (filters.name && !p.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
+                if (filters.size && p.size !== filters.size) return false;
+                if (filters.type && p.type !== filters.type) return false;
+                if (filters.party && (p.party?._id || p.party) !== filters.party) return false;
+                return true;
+            })
+            .map(product => {
+                const productTransactions = transactions.filter(t => t.product?._id === product._id || t.product === product._id);
 
-            // Helper to get pcs
-            const getPcs = (tx) => {
-                const packetsPerLinear = Number(product.packetsPerLinear) || 0;
-                const pcsPerPacket = Number(product.pcsPerPacket) || 0;
-                const q = Number(tx.quantity) || 0;
-                if (tx.unit === 'linear') return q * packetsPerLinear * pcsPerPacket;
-                if (tx.unit === 'packet') return q * pcsPerPacket;
-                return q;
-            };
-
-            // Calculate Opening Stock (Stock before Start Date)
-            let openingPcs = Number(product.previousStock) || 0;
-            if (filters.startDate) {
-                txsForProduct.forEach(tx => {
-                    const txDate = new Date(tx.date).toISOString().split('T')[0];
-                    if (txDate < filters.startDate) {
-                        const qty = Number(tx.quantityInPcs) || 0;
-                        if (tx.type === 'produce') openingPcs += qty;
-                        else if (tx.type === 'delivered') openingPcs -= qty;
-                    }
+                const beforeRange = productTransactions.filter(t => new Date(t.date) < start);
+                const inRange = productTransactions.filter(t => {
+                    const d = new Date(t.date);
+                    return d >= start && d <= end;
                 });
-            }
 
-            // Calculate Period Transactions
-            let producedPcs = 0;
-            let deliveredPcs = 0;
-            txsForProduct.forEach(tx => {
-                const txDate = new Date(tx.date).toISOString().split('T')[0];
-                const afterStart = !filters.startDate || txDate >= filters.startDate;
-                const beforeEnd = !filters.endDate || txDate <= filters.endDate;
+                const calculatePcs = (txs) => txs.reduce((acc, t) => {
+                    const q = Number(t.quantityInPcs) || 0;
+                    return t.type === 'produce' ? acc + q : acc - q;
+                }, 0);
 
-                if (afterStart && beforeEnd) {
-                    const qty = Number(tx.quantityInPcs) || 0;
-                    if (tx.type === 'produce') producedPcs += qty;
-                    else if (tx.type === 'delivered') deliveredPcs += qty;
-                }
+                const initialPcs = (Number(product.previousStock) || 0) + calculatePcs(beforeRange);
+
+                const producedPcs = inRange.filter(t => t.type === 'produce').reduce((acc, t) => acc + (Number(t.quantityInPcs) || 0), 0);
+                const deliveredPcs = inRange.filter(t => t.type === 'delivered').reduce((acc, t) => acc + (Number(t.quantityInPcs) || 0), 0);
+                const remainingPcs = initialPcs + producedPcs - deliveredPcs;
+
+
+                const toUnit = (pcs) => {
+                    const l = product.packetsPerLinear > 0 && product.pcsPerPacket > 0 ? pcs / (product.packetsPerLinear * product.pcsPerPacket) : 0;
+                    const pk = product.pcsPerPacket > 0 ? pcs / product.pcsPerPacket : 0;
+                    return { pcs, linear: l, packets: pk };
+                };
+
+                return {
+                    product,
+                    initial: toUnit(initialPcs),
+                    produced: toUnit(producedPcs),
+                    delivered: toUnit(deliveredPcs),
+                    remaining: toUnit(remainingPcs)
+                };
             });
 
-            const remainingPcs = openingPcs + producedPcs - deliveredPcs;
-
-            return {
-                name: product.name,
-                size: product.size,
-                type: product.type || 'ST',
-                initial: {
-                    pcs: openingPcs,
-                    packets: fromPcs(openingPcs, 'packet', product),
-                    linear: fromPcs(openingPcs, 'linear', product)
-                },
-                produced: {
-                    pcs: producedPcs,
-                    packets: fromPcs(producedPcs, 'packet', product),
-                    linear: fromPcs(producedPcs, 'linear', product)
-                },
-                delivered: {
-                    pcs: deliveredPcs,
-                    packets: fromPcs(deliveredPcs, 'packet', product),
-                    linear: fromPcs(deliveredPcs, 'linear', product)
-                },
-                remaining: {
-                    pcs: remainingPcs,
-                    packets: fromPcs(remainingPcs, 'packet', product),
-                    linear: fromPcs(remainingPcs, 'linear', product)
-                }
-            };
-        });
-
-        // Filter out empty results if nothing ever happened with this product and stock is 0
         setReportData(report.filter(r => r.initial.pcs !== 0 || r.produced.pcs !== 0 || r.delivered.pcs !== 0 || r.remaining.pcs !== 0));
-
+        setCurrentPage(1);
     }, [transactions, products, filters, loading]);
+
+    const totals = useMemo(() => {
+        return reportData.reduce((acc, item) => ({
+            initial: {
+                linear: acc.initial.linear + item.initial.linear,
+                packets: acc.initial.packets + item.initial.packets,
+                pcs: acc.initial.pcs + item.initial.pcs
+            },
+            produced: {
+                linear: acc.produced.linear + item.produced.linear,
+                packets: acc.produced.packets + item.produced.packets,
+                pcs: acc.produced.pcs + item.produced.pcs
+            },
+            delivered: {
+                linear: acc.delivered.linear + item.delivered.linear,
+                packets: acc.delivered.packets + item.delivered.packets,
+                pcs: acc.delivered.pcs + item.delivered.pcs
+            },
+            remaining: {
+                linear: acc.remaining.linear + item.remaining.linear,
+                packets: acc.remaining.packets + item.remaining.packets,
+                pcs: acc.remaining.pcs + item.remaining.pcs
+            }
+        }), {
+            initial: { linear: 0, packets: 0, pcs: 0 },
+            produced: { linear: 0, packets: 0, pcs: 0 },
+            delivered: { linear: 0, packets: 0, pcs: 0 },
+            remaining: { linear: 0, packets: 0, pcs: 0 }
+        });
+    }, [reportData]);
+
+
+    const totalItems = reportData.length;
+    const paginatedReportData = reportData.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
 
     const downloadPDF = () => {
         if (reportData.length === 0) return;
 
-        const doc = new jsPDF();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 14;
-        const dateStr = format(new Date(), 'dd-MM-yyyy');
+        const doc = new jsPDF({ orientation: 'landscape' });
 
-        // Add Logo
-        const logoWidth = 50;
-        const logoHeight = 25;
+        // Add Logo - Repositioned to Right Side
         try {
-            doc.addImage(logo, 'PNG', margin, 10, logoWidth, logoHeight);
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const logoWidth = 40;
+            doc.addImage(logo, 'PNG', pageWidth - logoWidth - 14, 10, logoWidth, 12);
         } catch (e) {
-            console.error("Error adding logo to PDF:", e);
+            console.error('Error adding logo to PDF:', e);
         }
 
-        // Title Section
+
         doc.setFontSize(22);
-        doc.setTextColor(40, 40, 40);
-        const titleX = margin + logoWidth + 5;
-        doc.text('Inventory Report', titleX, 25);
+
+        doc.setTextColor(40);
+        doc.text('Detailed Inventory Report', 14, 20);
 
         doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Generated on: ${dateStr}`, titleX, 32);
+        doc.setTextColor(100);
+        doc.text(`Period: ${filters.startDate} to ${filters.endDate}`, 14, 28);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 33);
 
-        let periodStr = 'Period: All Time';
-        if (filters.startDate || filters.endDate) {
-            periodStr = 'Period: ';
-            if (filters.startDate) periodStr += `From ${filters.startDate} `;
-            if (filters.endDate) periodStr += `To ${filters.endDate}`;
-        }
-        doc.text(periodStr, margin, 45);
+        const tableData = reportData.map(item => [
+            item.product.name,
+            item.product.size,
+            item.product.party?.name || 'N/A',
+            // Opening
+            item.initial.linear.toFixed(1),
+            item.initial.packets.toFixed(1),
+            item.initial.pcs.toFixed(0),
+            // Produced
+            item.produced.linear.toFixed(1),
+            item.produced.packets.toFixed(1),
+            item.produced.pcs.toFixed(0),
+            // Delivered
+            item.delivered.linear.toFixed(1),
+            item.delivered.packets.toFixed(1),
+            item.delivered.pcs.toFixed(0),
+            // Remaining
+            item.remaining.linear.toFixed(1),
+            item.remaining.packets.toFixed(1),
+            item.remaining.pcs.toFixed(0)
+        ]);
 
-        // Card Layout Settings
-        const startY = 55;
-        const cardGap = 10;
-        const colCount = 3;
-        const cardWidth = (pageWidth - (margin * 2) - (cardGap * (colCount - 1))) / colCount;
-        const cardHeight = 95;
+        // Create totals row
+        const totalsRow = [
+            { content: 'TOTAL', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+            // Opening
+            totals.initial.linear.toFixed(1),
+            totals.initial.packets.toFixed(1),
+            totals.initial.pcs.toFixed(0),
+            // Produced
+            totals.produced.linear.toFixed(1),
+            totals.produced.packets.toFixed(1),
+            totals.produced.pcs.toFixed(0),
+            // Delivered
+            totals.delivered.linear.toFixed(1),
+            totals.delivered.packets.toFixed(1),
+            totals.delivered.pcs.toFixed(0),
+            // Remaining
+            totals.remaining.linear.toFixed(1),
+            totals.remaining.packets.toFixed(1),
+            totals.remaining.pcs.toFixed(0)
+        ];
 
-        let currentX = margin;
-        let currentY = startY;
+        // Add Totals row to the START of tableData
+        tableData.unshift(totalsRow);
 
-        reportData.forEach((item, index) => {
-            if (currentY + cardHeight > pageHeight - margin) {
-                doc.addPage();
-                currentY = margin;
-            }
 
-            // Draw Card Container
-            doc.setDrawColor(220, 220, 220);
-            doc.setFillColor(255, 255, 255);
-            doc.roundedRect(currentX, currentY, cardWidth, cardHeight, 3, 3, 'FD');
 
-            // Header Background
-            doc.setFillColor(248, 250, 252);
-            doc.rect(currentX + 0.5, currentY + 0.5, cardWidth - 1, 14, 'F');
-
-            // Product Name
-            doc.setFontSize(10);
-            doc.setTextColor(30, 41, 59);
-            doc.setFont(undefined, 'bold');
-            let displayName = item.name;
-            if (displayName.length > 20) displayName = displayName.substring(0, 18) + '...';
-            doc.text(displayName, currentX + 4, currentY + 9);
-
-            // Size Badge
-            doc.setFontSize(8);
-            doc.setTextColor(71, 85, 105);
-            doc.setFont(undefined, 'normal');
-            const sizeText = item.size;
-            const sizeWidth = doc.getTextWidth(sizeText) + 4;
-            doc.setDrawColor(200, 200, 200);
-            doc.setFillColor(255, 255, 255);
-            const sizeX = currentX + cardWidth - sizeWidth - 2;
-            doc.roundedRect(sizeX, currentY + 3, sizeWidth, 8, 2, 2, 'FD');
-            doc.text(sizeText, sizeX + 2, currentY + 8);
-
-            // Type Badge
-            const typeText = item.type;
-            const typeWidth = doc.getTextWidth(typeText) + 4;
-            if (item.type === 'ST') doc.setFillColor(37, 99, 235);
-            else if (item.type === 'TF') doc.setFillColor(147, 51, 234);
-            else doc.setFillColor(156, 163, 175);
-            const typeX = sizeX - typeWidth - 2;
-            doc.roundedRect(typeX, currentY + 3, typeWidth, 8, 2, 2, 'F');
-            doc.setTextColor(255, 255, 255);
-            doc.setFont(undefined, 'bold');
-            doc.text(typeText, typeX + 2, currentY + 8);
-
-            let contentY = currentY + 22;
-            const colW = (cardWidth - 8) / 3;
-
-            // --- PRODUCED Section ---
-            doc.setFontSize(9);
-            doc.setTextColor(22, 163, 74);
-            doc.setFont(undefined, 'bold');
-            doc.text('PRODUCED', currentX + 4, contentY);
-            doc.setDrawColor(220, 252, 231);
-            doc.setLineWidth(0.5);
-            doc.line(currentX + 4, contentY + 1, currentX + 22, contentY + 1);
-
-            contentY += 6;
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(21, 128, 61);
-
-            doc.setFillColor(240, 253, 244);
-            doc.roundedRect(currentX + 4, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
-            doc.text(item.produced.linear.toFixed(1), currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Linear', currentX + 4 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            doc.setFillColor(240, 253, 244);
-            doc.roundedRect(currentX + 4 + colW, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'bold');
-            doc.text(item.produced.packets.toFixed(1), currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Packets', currentX + 4 + colW + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            doc.setFillColor(240, 253, 244);
-            doc.roundedRect(currentX + 4 + colW * 2, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'bold');
-            doc.text(item.produced.pcs.toFixed(0), currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            // --- DELIVERED Section ---
-            contentY += 22;
-            doc.setFontSize(9);
-            doc.setTextColor(220, 38, 38);
-            doc.setFont(undefined, 'bold');
-            doc.text('DELIVERED', currentX + 4, contentY);
-            doc.setDrawColor(254, 226, 226);
-            doc.line(currentX + 4, contentY + 1, currentX + 22, contentY + 1);
-
-            contentY += 6;
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(185, 28, 28);
-
-            doc.setFillColor(254, 242, 242);
-            doc.roundedRect(currentX + 4, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
-            doc.text(item.delivered.linear.toFixed(1), currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Linear', currentX + 4 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            doc.setFillColor(254, 242, 242);
-            doc.roundedRect(currentX + 4 + colW, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'bold');
-            doc.text(item.delivered.packets.toFixed(1), currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Packets', currentX + 4 + colW + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            doc.setFillColor(254, 242, 242);
-            doc.roundedRect(currentX + 4 + colW * 2, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'bold');
-            doc.text(item.delivered.pcs.toFixed(0), currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            // --- REMAINING Section ---
-            contentY += 22;
-            doc.setFontSize(9);
-            doc.setTextColor(37, 99, 235);
-            doc.setFont(undefined, 'bold');
-            doc.text('REMAINING', currentX + 4, contentY);
-            doc.setDrawColor(219, 234, 254);
-            doc.line(currentX + 4, contentY + 1, currentX + 22, contentY + 1);
-
-            contentY += 6;
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'normal');
-            doc.setTextColor(29, 78, 216);
-
-            doc.setFillColor(239, 246, 255);
-            doc.roundedRect(currentX + 4, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFont(undefined, 'bold');
-            doc.text(item.remaining.linear.toFixed(1), currentX + 4 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Linear', currentX + 4 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            doc.setFillColor(239, 246, 255);
-            doc.roundedRect(currentX + 4 + colW, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'bold');
-            doc.text(item.remaining.packets.toFixed(1), currentX + 4 + colW + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Packets', currentX + 4 + colW + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            doc.setFillColor(239, 246, 255);
-            doc.roundedRect(currentX + 4 + colW * 2, contentY, colW - 2, 14, 1, 1, 'F');
-            doc.setFontSize(8);
-            doc.setFont(undefined, 'bold');
-            doc.text(item.remaining.pcs.toFixed(0), currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 5, { align: 'center' });
-            doc.setFontSize(7);
-            doc.setFont(undefined, 'normal');
-            doc.text('Pcs', currentX + 4 + colW * 2 + (colW - 2) / 2, contentY + 11, { align: 'center' });
-
-            if ((index + 1) % colCount === 0) {
-                currentX = margin;
-                currentY += cardHeight + cardGap;
-            } else {
-                currentX += cardWidth + cardGap;
+        autoTable(doc, {
+            startY: 40,
+            head: [
+                [
+                    { content: 'Product Info', colSpan: 3, styles: { halign: 'center', fillColor: [51, 51, 51] } },
+                    { content: 'Opening Stock', colSpan: 3, styles: { halign: 'center', fillColor: [63, 81, 181] } },
+                    { content: 'Produced (+)', colSpan: 3, styles: { halign: 'center', fillColor: [76, 175, 80] } },
+                    { content: 'Delivered (-)', colSpan: 3, styles: { halign: 'center', fillColor: [211, 63, 51] } },
+                    { content: 'Closing Stock', colSpan: 3, styles: { halign: 'center', fillColor: [33, 150, 243] } }
+                ],
+                [
+                    'Product', 'Size', 'Party',
+                    'Lin', 'Pkt', 'Pcs',
+                    'Lin', 'Pkt', 'Pcs',
+                    'Lin', 'Pkt', 'Pcs',
+                    'Lin', 'Pkt', 'Pcs'
+                ]
+            ],
+            body: tableData,
+            theme: 'grid',
+            styles: {
+                fontSize: 8,
+                cellPadding: 2,
+                valign: 'middle'
+            },
+            headStyles: {
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+                lineWidth: 0.1,
+                lineColor: [255, 255, 255]
+            },
+            columnStyles: {
+                0: { fontStyle: 'bold', cellWidth: 'auto' },
+                3: { fillColor: [248, 250, 252] },
+                4: { fillColor: [248, 250, 252] },
+                5: { fillColor: [248, 250, 252] },
+                9: { fillColor: [248, 250, 252] },
+                10: { fillColor: [248, 250, 252] },
+                11: { fillColor: [248, 250, 252] }
+            },
+            didParseCell: function (data) {
+                if (data.section === 'body' && (data.column.index >= 3)) {
+                    data.cell.styles.halign = 'center';
+                }
             }
         });
 
-        doc.save(`inventory_report_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+        doc.save(`welltouch-detailed-report-${filters.startDate}-to-${filters.endDate}.pdf`);
     };
 
-    const uniqueProductNames = [...new Set(products.map(p => p.name))];
-    const uniqueSizes = [...new Set(products.map(p => p.size))];
 
     return (
-        <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-lg p-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+        <div className="container mx-auto px-4 py-8 max-w-[1600px]">
+            {/* Refined Header */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4 px-2">
+                <div className="flex items-center gap-4">
+                    <img src={logo} alt="Welltouch" className="h-12 w-auto object-contain" />
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-800">Reports</h2>
-                        <p className="text-gray-600">Overview of production vs delivery</p>
-                    </div>
-                    <button
-                        onClick={downloadPDF}
-                        disabled={reportData.length === 0}
-                        className="mt-4 md:mt-0 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Download PDF
-                    </button>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Product</label>
-                        <select
-                            name="productName"
-                            value={filters.productName}
-                            onChange={handleFilterChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 bg-white"
-                        >
-                            <option value="">All Products</option>
-                            {uniqueProductNames.map(name => (
-                                <option key={name} value={name}>{name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Size</label>
-                        <select
-                            name="size"
-                            value={filters.size}
-                            onChange={handleFilterChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 bg-white"
-                        >
-                            <option value="">All Sizes</option>
-                            {uniqueSizes.map(size => (
-                                <option key={size} value={size}>{size}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Type</label>
-                        <select
-                            name="type"
-                            value={filters.type}
-                            onChange={handleFilterChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 bg-white"
-                        >
-                            <option value="">All Types</option>
-                            <option value="ST">Stat (ST)</option>
-                            <option value="TF">Tri Fold (TF)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">From Date</label>
-                        <input
-                            type="date"
-                            name="startDate"
-                            value={filters.startDate}
-                            onChange={handleFilterChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">To Date</label>
-                        <input
-                            type="date"
-                            name="endDate"
-                            value={filters.endDate}
-                            onChange={handleFilterChange}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-                        />
+                        <h1 className="text-4xl font-extrabold text-gray-800 tracking-tight">Reports</h1>
+                        <p className="text-gray-500 font-medium mt-1">Overview of production vs delivery</p>
                     </div>
                 </div>
 
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-600"></div>
+                <button
+                    onClick={downloadPDF}
+                    className="bg-[#D33F33] hover:bg-[#b0352b] text-white font-bold py-2.5 px-6 rounded-lg shadow-sm transition-all flex items-center gap-2 group text-sm"
+                >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-5-5h3V4h4v7h3l-5 5zM5 18h14v2H5v-2z" /></svg>
+                    Download PDF
+                </button>
+            </div>
+
+            {/* Redesigned Filter Bar (Single Row) */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-10 p-4 px-6">
+                <div className="flex flex-wrap items-center gap-6">
+                    <div className="flex-1 min-w-[150px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Product</label>
+                        <div className="relative">
+                            <select name="name" value={filters.name} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
+                                <option value="">All Products</option>
+                                {[...new Set(products.map(p => p.name))].map(n => <option key={n} value={n}>{n}</option>)}
+                            </select>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
                     </div>
-                ) : reportData.length === 0 ? (
-                    <div className="text-center py-24">
-                        <svg className="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p className="mt-2 text-gray-500">No data found for the selected filters.</p>
+                    <div className="flex-1 min-w-[120px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Size</label>
+                        <div className="relative">
+                            <select name="size" value={filters.size} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
+                                <option value="">All Sizes</option>
+                                {uniqueSizes.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {reportData.map((item, idx) => (
-                            <div key={idx} className="bg-white border rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                                <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                                    <h3 className="font-bold text-gray-800 truncate" title={item.name}>{item.name}</h3>
-                                    <div className="flex items-center space-x-2">
-                                        <span className={`px-2 py-0.5 rounded text-xs font-semibold text-white ${item.type === 'ST' ? 'bg-blue-600' : item.type === 'TF' ? 'bg-purple-600' : 'bg-gray-500'}`}>
-                                            {item.type}
-                                        </span>
-                                        <span className="bg-white border border-gray-200 px-2 py-1 rounded text-xs font-semibold text-gray-600">
-                                            {item.size}
-                                        </span>
+                    <div className="flex-1 min-w-[120px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Type</label>
+                        <div className="relative">
+                            <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
+                                <option value="">All Types</option>
+                                {['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra'].map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex-1 min-w-[140px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">From Date</label>
+                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1 focus:border-indigo-500 outline-none font-bold text-sm" />
+                    </div>
+                    <div className="flex-1 min-w-[140px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">To Date</label>
+                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1 focus:border-indigo-500 outline-none font-bold text-sm" />
+                    </div>
+                </div>
+            </div>
+
+            {/* Matrix View - 3 Column Grid */}
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-32">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                    <p className="text-gray-500 font-medium tracking-widest uppercase text-xs">Compiling Reports...</p>
+                </div>
+            ) : reportData.length === 0 ? (
+                <div className="text-center py-32 bg-white rounded-3xl border-2 border-dashed border-gray-100">
+                    <p className="text-gray-400 font-bold uppercase tracking-widest text-sm">No matching inventory records found</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {/* TOTALS CARD (Moved to the top) */}
+                    {reportData.length > 0 && (
+                        <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden transform scale-[1.02] transition-transform">
+                            {/* Card Header */}
+                            <div className="px-6 py-4 flex items-center justify-between border-b border-slate-700 bg-slate-900/50">
+                                <h3 className="text-base font-black text-white uppercase tracking-widest">GRAND TOTALS</h3>
+                                <span className="bg-indigo-500 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase">ALL PRODUCTS</span>
+                            </div>
+
+                            <div className="p-6 pt-5 space-y-6">
+                                {/* PRODUCED TOTAL */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-green-400/90 uppercase tracking-wider">Total Produced</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-green-400/10 p-3 rounded-lg text-center border border-green-400/20">
+                                            <div className="text-lg font-black text-green-400 leading-none">{totals.produced.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-green-400/60 uppercase tracking-tighter mt-1.5">Linear</div>
+                                        </div>
+                                        <div className="bg-green-400/10 p-3 rounded-lg text-center border border-green-400/20">
+                                            <div className="text-lg font-black text-green-400 leading-none">{totals.produced.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-green-400/60 uppercase tracking-tighter mt-1.5">Packets</div>
+                                        </div>
+                                        <div className="bg-green-400/10 p-3 rounded-lg text-center border border-green-400/20">
+                                            <div className="text-lg font-black text-green-400 leading-none">{totals.produced.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-green-400/60 uppercase tracking-tighter mt-1.5">Pcs</div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="p-4 space-y-4">
-                                    <div>
-                                        <div className="text-xs font-bold text-green-600 uppercase mb-1 flex items-center">
-                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                                            Produced
+
+                                {/* DELIVERED TOTAL */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-red-400/90 uppercase tracking-wider">Total Delivered</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-red-400/10 p-3 rounded-lg text-center border border-red-400/20">
+                                            <div className="text-lg font-black text-red-400 leading-none">{totals.delivered.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-red-400/60 uppercase tracking-tighter mt-1.5">Linear</div>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                                            <div className="bg-green-50 rounded p-1">
-                                                <div className="font-bold text-green-700">{item.produced.linear.toFixed(1)}</div>
-                                                <div className="text-[10px] text-green-600">Linear</div>
-                                            </div>
-                                            <div className="bg-green-50 rounded p-1">
-                                                <div className="font-bold text-green-700">{item.produced.packets.toFixed(1)}</div>
-                                                <div className="text-[10px] text-green-600">Packets</div>
-                                            </div>
-                                            <div className="bg-green-50 rounded p-1">
-                                                <div className="font-bold text-green-700">{item.produced.pcs.toFixed(0)}</div>
-                                                <div className="text-[10px] text-green-600">Pcs</div>
-                                            </div>
+                                        <div className="bg-red-400/10 p-3 rounded-lg text-center border border-red-400/20">
+                                            <div className="text-lg font-black text-red-400 leading-none">{totals.delivered.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-red-400/60 uppercase tracking-tighter mt-1.5">Packets</div>
+                                        </div>
+                                        <div className="bg-red-400/10 p-3 rounded-lg text-center border border-red-400/20">
+                                            <div className="text-lg font-black text-red-400 leading-none">{totals.delivered.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-red-400/60 uppercase tracking-tighter mt-1.5">Pcs</div>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <div className="text-xs font-bold text-red-600 uppercase mb-1 flex items-center">
-                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" /></svg>
-                                            Delivered
+                                {/* REMAINING TOTAL */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-indigo-400/90 uppercase tracking-wider">Total Remaining</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-indigo-400/10 p-3 rounded-lg text-center border border-indigo-400/20">
+                                            <div className="text-lg font-black text-indigo-400 leading-none">{totals.remaining.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-indigo-400/60 uppercase tracking-tighter mt-1.5">Linear</div>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                                            <div className="bg-red-50 rounded p-1">
-                                                <div className="font-bold text-red-700">{item.delivered.linear.toFixed(1)}</div>
-                                                <div className="text-[10px] text-red-600">Linear</div>
-                                            </div>
-                                            <div className="bg-red-50 rounded p-1">
-                                                <div className="font-bold text-red-700">{item.delivered.packets.toFixed(1)}</div>
-                                                <div className="text-[10px] text-red-600">Packets</div>
-                                            </div>
-                                            <div className="bg-red-50 rounded p-1">
-                                                <div className="font-bold text-red-700">{item.delivered.pcs.toFixed(0)}</div>
-                                                <div className="text-[10px] text-red-600">Pcs</div>
-                                            </div>
+                                        <div className="bg-indigo-400/10 p-3 rounded-lg text-center border border-indigo-400/20">
+                                            <div className="text-lg font-black text-indigo-400 leading-none">{totals.remaining.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-indigo-400/60 uppercase tracking-tighter mt-1.5">Packets</div>
                                         </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="text-xs font-bold text-blue-600 uppercase mb-1 flex items-center">
-                                            <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                                            Remaining
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                                            <div className="bg-blue-50 rounded p-1">
-                                                <div className="font-bold text-blue-700">{item.remaining.linear.toFixed(1)}</div>
-                                                <div className="text-[10px] text-blue-600">Linear</div>
-                                            </div>
-                                            <div className="bg-blue-50 rounded p-1">
-                                                <div className="font-bold text-blue-700">{item.remaining.packets.toFixed(1)}</div>
-                                                <div className="text-[10px] text-blue-600">Packets</div>
-                                            </div>
-                                            <div className="bg-blue-50 rounded p-1">
-                                                <div className="font-bold text-blue-700">{item.remaining.pcs.toFixed(0)}</div>
-                                                <div className="text-[10px] text-blue-600">Pcs</div>
-                                            </div>
+                                        <div className="bg-indigo-400/10 p-3 rounded-lg text-center border border-indigo-400/20">
+                                            <div className="text-lg font-black text-indigo-400 leading-none">{totals.remaining.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-indigo-400/60 uppercase tracking-tighter mt-1.5">Pcs</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                )}
-            </div>
+                        </div>
+                    )}
+
+                    {paginatedReportData.map((item, idx) => (
+                        <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
+
+                            {/* Card Header */}
+                            <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
+                                <h3 className="text-base font-bold text-gray-800 line-clamp-1">{item.product.name}</h3>
+                                <div className="flex items-center gap-2">
+                                    <span className="bg-slate-700 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-tighter">
+                                        {item.product.type}
+                                    </span>
+                                    <span className="bg-white border text-gray-400 text-[10px] font-bold px-2 py-1 rounded-md uppercase border-gray-200">
+                                        {item.product.size}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div className="p-6 pt-5 space-y-6">
+                                {/* PRODUCED SECTION */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-green-600 uppercase tracking-wider before:content-['+']">Produced</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-green-50/40 p-3 rounded-lg text-center border border-green-100/30">
+                                            <div className="text-lg font-black text-green-700 leading-none">{item.produced.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-green-600/60 uppercase tracking-tighter mt-1.5">Linear</div>
+                                        </div>
+                                        <div className="bg-green-50/40 p-3 rounded-lg text-center border border-green-100/30">
+                                            <div className="text-lg font-black text-green-700 leading-none">{item.produced.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-green-600/60 uppercase tracking-tighter mt-1.5">Packets</div>
+                                        </div>
+                                        <div className="bg-green-50/40 p-3 rounded-lg text-center border border-green-100/30">
+                                            <div className="text-lg font-black text-green-700 leading-none">{item.produced.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-green-600/60 uppercase tracking-tighter mt-1.5">Pcs</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* DELIVERED SECTION */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-[#D33F33] uppercase tracking-wider before:content-['-']">Delivered</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-red-50/40 p-3 rounded-lg text-center border border-red-100/30">
+                                            <div className="text-lg font-black text-[#D33F33] leading-none">{item.delivered.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-red-500/60 uppercase tracking-tighter mt-1.5">Linear</div>
+                                        </div>
+                                        <div className="bg-red-50/40 p-3 rounded-lg text-center border border-red-100/30">
+                                            <div className="text-lg font-black text-[#D33F33] leading-none">{item.delivered.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-red-500/60 uppercase tracking-tighter mt-1.5">Packets</div>
+                                        </div>
+                                        <div className="bg-red-50/40 p-3 rounded-lg text-center border border-red-100/30">
+                                            <div className="text-lg font-black text-[#D33F33] leading-none">{item.delivered.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-red-500/60 uppercase tracking-tighter mt-1.5">Pcs</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* REMAINING SECTION */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-indigo-600 uppercase tracking-wider before:content-['\f023'] before:font-serif">Remaining</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-indigo-50/40 p-3 rounded-lg text-center border border-indigo-100/30">
+                                            <div className="text-lg font-black text-indigo-700 leading-none">{item.remaining.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-tighter mt-1.5">Linear</div>
+                                        </div>
+                                        <div className="bg-indigo-50/40 p-3 rounded-lg text-center border border-indigo-100/30">
+                                            <div className="text-lg font-black text-indigo-700 leading-none">{item.remaining.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-tighter mt-1.5">Packets</div>
+                                        </div>
+                                        <div className="bg-indigo-50/40 p-3 rounded-lg text-center border border-indigo-100/30">
+                                            <div className="text-lg font-black text-indigo-700 leading-none">{item.remaining.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-indigo-500/60 uppercase tracking-tighter mt-1.5">Pcs</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+
+            )}
+
+            {!loading && reportData.length > 0 && (
+                <div className="mt-12 p-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={totalItems}
+                        pageSize={pageSize}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
+            )}
         </div>
     );
 }

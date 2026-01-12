@@ -40,7 +40,7 @@ const heal = async () => {
             } else {
                 console.log(`Warning: Transaction ${tx._id} has no product reference.`);
                 // Try to find a match by name, size, type
-                const pType = tx.productType || 'ST';
+                const pType = tx.productType || 'PPF TF';
                 const match = await Product.findOne({
                     name: tx.productName,
                     size: tx.size,

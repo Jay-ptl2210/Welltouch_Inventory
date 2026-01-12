@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getProducts, addTransaction } from '../services/api';
+import { getProducts, addTransaction, getParties } from '../services/api';
 import { format } from 'date-fns';
 
 function AddTransaction() {
@@ -9,13 +9,15 @@ function AddTransaction() {
     const [formData, setFormData] = useState({
         productName: '',
         size: '',
-        productType: '', // ST or TF
+        productType: '', // PPF TF, PPF ST, etc.
+        party: '',
         type: 'produce', // produce or delivered
         quantity: '',
         unit: 'pcs',
         date: format(new Date(), 'yyyy-MM-dd'),
         note: ''
     });
+    const [parties, setParties] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [sizes, setSizes] = useState([]);
@@ -23,13 +25,23 @@ function AddTransaction() {
 
     useEffect(() => {
         loadProducts();
+        loadParties();
     }, []);
+
+    const loadParties = async () => {
+        try {
+            const response = await getParties();
+            setParties(response.data);
+        } catch (error) {
+            console.error('Failed to load parties', error);
+        }
+    };
 
     useEffect(() => {
         if (formData.productName) {
             const productSizes = [...new Set(
                 products
-                    .filter(p => p.name === formData.productName)
+                    .filter(p => p.name === formData.productName && (p.party?._id || p.party) === formData.party)
                     .map(p => p.size)
             )];
             setSizes(productSizes);
@@ -40,13 +52,17 @@ function AddTransaction() {
             setSizes([]);
             setAvailableTypes([]);
         }
-    }, [formData.productName, products]);
+    }, [formData.productName, products, formData.party]);
 
     useEffect(() => {
         if (formData.productName && formData.size) {
             const types = products
-                .filter(p => p.name === formData.productName && p.size === formData.size)
-                .map(p => p.type || 'ST');
+                .filter(p =>
+                    p.name === formData.productName &&
+                    p.size === formData.size &&
+                    (p.party?._id || p.party) === formData.party
+                )
+                .map(p => p.type || 'PPF TF');
 
             const uniqueTypes = [...new Set(types)];
             setAvailableTypes(uniqueTypes);
@@ -60,7 +76,7 @@ function AddTransaction() {
         } else {
             setAvailableTypes([]);
         }
-    }, [formData.productName, formData.size, products]);
+    }, [formData.productName, formData.size, products, formData.party]);
 
     const loadProducts = async () => {
         try {
@@ -117,7 +133,8 @@ function AddTransaction() {
             const selectedProduct = products.find(
                 p => p.name === formData.productName &&
                     p.size === formData.size &&
-                    (p.type || 'ST') === (formData.productType || 'ST')
+                    (p.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                    (p.party?._id || p.party) === formData.party
             );
             if (!selectedProduct) {
                 throw new Error('Product not found (check Name, Size, and Type)');
@@ -156,6 +173,7 @@ function AddTransaction() {
                 note: formData.note || ''
             });
 
+
             setMessage({ type: 'success', text: 'Transaction recorded successfully!' });
 
             // Redirect back to manage products after short delay
@@ -173,7 +191,11 @@ function AddTransaction() {
         }
     };
 
-    const uniqueProductNames = [...new Set(products.map(p => p.name))];
+    const uniqueProductNames = [...new Set(
+        products
+            .filter(p => !formData.party || (p.party?._id || p.party) === formData.party)
+            .map(p => p.name)
+    )];
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -192,6 +214,28 @@ function AddTransaction() {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div className="relative overflow-hidden">
+                        <label htmlFor="party" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                            Party <span className="text-red-500">*</span>
+                        </label>
+                        <select
+                            id="party"
+                            name="party"
+                            required
+                            value={formData.party}
+                            onChange={(e) => {
+                                handleFormChange(e);
+                                setFormData(prev => ({ ...prev, productName: '', size: '', productType: '' }));
+                            }}
+                            className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                        >
+                            <option value="">Select a party</option>
+                            {parties.map(p => (
+                                <option key={p._id} value={p._id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative overflow-hidden">
                             <label htmlFor="productName" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
@@ -203,9 +247,10 @@ function AddTransaction() {
                                 required
                                 value={formData.productName}
                                 onChange={handleFormChange}
-                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                                disabled={!formData.party}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                             >
-                                <option value="">Select a product</option>
+                                <option value="">Select product</option>
                                 {uniqueProductNames.map(name => (
                                     <option key={name} value={name}>
                                         {name}
@@ -251,14 +296,15 @@ function AddTransaction() {
                                     className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
                                 >
                                     <option value="">Select Type</option>
-                                    <option value="ST">Stat (ST)</option>
-                                    <option value="TF">Tri Fold (TF)</option>
+                                    {availableTypes.map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
                                 </select>
                             ) : (
                                 <input
                                     type="text"
                                     disabled
-                                    value={formData.productType === 'TF' ? 'Tri Fold (TF)' : 'Stat (ST)'}
+                                    value={formData.productType || '-'}
                                     className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
                                 />
                             )}
@@ -275,7 +321,8 @@ function AddTransaction() {
                                     const p = products.find(prod =>
                                         prod.name === formData.productName &&
                                         prod.size === formData.size &&
-                                        (prod.type || 'ST') === (formData.productType || 'ST')
+                                        (prod.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                        (prod.party?._id || prod.party) === formData.party
                                     );
                                     return p ? p.packetsPerLinear : '';
                                 })()}
@@ -295,7 +342,8 @@ function AddTransaction() {
                                     const p = products.find(prod =>
                                         prod.name === formData.productName &&
                                         prod.size === formData.size &&
-                                        (prod.type || 'ST') === (formData.productType || 'ST')
+                                        (prod.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                        (prod.party?._id || prod.party) === formData.party
                                     );
                                     return p ? p.pcsPerPacket : '';
                                 })()}
@@ -352,7 +400,8 @@ function AddTransaction() {
                                             const product = products.find(p =>
                                                 p.name === formData.productName &&
                                                 p.size === formData.size &&
-                                                (p.type || 'ST') === (formData.productType || 'ST')
+                                                (p.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                                (p.party?._id || p.party) === formData.party
                                             );
                                             if (!product) return '(Stock: 0)';
                                             const available = fromPcs(product.quantity, formData.unit, product);
@@ -373,7 +422,8 @@ function AddTransaction() {
                                     const product = products.find(p =>
                                         p.name === formData.productName &&
                                         p.size === formData.size &&
-                                        (p.type || 'ST') === (formData.productType || 'ST')
+                                        (p.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                        (p.party?._id || p.party) === formData.party
                                     );
                                     if (!product) return undefined;
                                     return fromPcs(product.quantity, formData.unit, product);

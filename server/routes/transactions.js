@@ -82,7 +82,7 @@ router.post('/', protect, async (req, res) => {
     const product = await Product.findOne({
       _id: productId,
       user: req.user._id
-    });
+    }).populate('party', 'name');
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -121,6 +121,8 @@ router.post('/', protect, async (req, res) => {
       date: date ? new Date(date) : new Date(),
       note: note || '',
       productType: product.type,
+      party: product.party ? product.party._id : undefined,
+      partyName: product.party ? product.party.name : undefined,
       user: req.user._id
     });
 
@@ -182,7 +184,7 @@ router.put('/:id', protect, async (req, res) => {
     const newProduct = await Product.findOne({
       _id: targetProductId,
       user: req.user._id
-    });
+    }).populate('party', 'name');
 
     if (!newProduct) {
       return res.status(404).json({ error: 'Target product not found' });
@@ -233,6 +235,10 @@ router.put('/:id', protect, async (req, res) => {
       transaction.date = date ? new Date(date) : new Date();
     }
     if (note !== undefined) transaction.note = note;
+
+    transaction.productType = newProduct.type;
+    transaction.party = newProduct.party ? newProduct.party._id : undefined;
+    transaction.partyName = newProduct.party ? newProduct.party.name : undefined;
 
     await transaction.save();
 
