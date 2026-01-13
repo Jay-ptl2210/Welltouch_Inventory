@@ -332,6 +332,18 @@ function Reports() {
                             </div>
                         </div>
                     </div>
+                    <div className="flex-1 min-w-[150px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Party</label>
+                        <div className="relative">
+                            <select name="party" value={filters.party} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
+                                <option value="">All Parties</option>
+                                {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                            </select>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
                     <div className="flex-1 min-w-[140px]">
                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">From Date</label>
                         <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1 focus:border-indigo-500 outline-none font-bold text-sm" />
