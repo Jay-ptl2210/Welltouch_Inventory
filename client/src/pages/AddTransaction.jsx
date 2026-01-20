@@ -10,6 +10,7 @@ function AddTransaction() {
         productName: '',
         size: '',
         productType: '', // PPF TF, PPF ST, etc.
+        productWeight: '',
         party: '',
         type: 'produce', // produce or delivered
         quantity: '',
@@ -22,6 +23,7 @@ function AddTransaction() {
     const [message, setMessage] = useState({ type: '', text: '' });
     const [sizes, setSizes] = useState([]);
     const [availableTypes, setAvailableTypes] = useState([]); // Types for the selected Name+Size
+    const [availableWeights, setAvailableWeights] = useState([]);
 
     useEffect(() => {
         loadProducts();
@@ -46,11 +48,12 @@ function AddTransaction() {
             )];
             setSizes(productSizes);
             if (!productSizes.includes(formData.size)) {
-                setFormData(prev => ({ ...prev, size: '', productType: '' }));
+                setFormData(prev => ({ ...prev, size: '', productType: '', productWeight: '' }));
             }
         } else {
             setSizes([]);
             setAvailableTypes([]);
+            setAvailableWeights([]);
         }
     }, [formData.productName, products, formData.party]);
 
@@ -67,7 +70,6 @@ function AddTransaction() {
             const uniqueTypes = [...new Set(types)];
             setAvailableTypes(uniqueTypes);
 
-            // Auto-select if only one type exists, or if current selection is invalid
             if (uniqueTypes.length === 1) {
                 setFormData(prev => ({ ...prev, productType: uniqueTypes[0] }));
             } else if (!uniqueTypes.includes(formData.productType)) {
@@ -77,6 +79,30 @@ function AddTransaction() {
             setAvailableTypes([]);
         }
     }, [formData.productName, formData.size, products, formData.party]);
+
+    useEffect(() => {
+        if (formData.productName && formData.size && formData.productType) {
+            const weights = products
+                .filter(p =>
+                    p.name === formData.productName &&
+                    p.size === formData.size &&
+                    (p.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                    (p.party?._id || p.party) === formData.party
+                )
+                .map(p => p.weight || 0);
+
+            const uniqueWeights = [...new Set(weights)];
+            setAvailableWeights(uniqueWeights);
+
+            if (uniqueWeights.length === 1) {
+                setFormData(prev => ({ ...prev, productWeight: uniqueWeights[0] }));
+            } else if (!uniqueWeights.includes(Number(formData.productWeight))) {
+                setFormData(prev => ({ ...prev, productWeight: '' }));
+            }
+        } else {
+            setAvailableWeights([]);
+        }
+    }, [formData.productName, formData.size, formData.productType, products, formData.party]);
 
     const loadProducts = async () => {
         try {
@@ -134,6 +160,7 @@ function AddTransaction() {
                 p => p.name === formData.productName &&
                     p.size === formData.size &&
                     (p.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                    (p.weight || 0) === (Number(formData.productWeight) || 0) &&
                     (p.party?._id || p.party) === formData.party
             );
             if (!selectedProduct) {
@@ -285,6 +312,33 @@ function AddTransaction() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="relative overflow-hidden">
                             <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Weight (gm)
+                            </label>
+                            {availableWeights.length > 1 ? (
+                                <select
+                                    name="productWeight"
+                                    required
+                                    value={formData.productWeight}
+                                    onChange={handleFormChange}
+                                    className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                                >
+                                    <option value="">Select Weight</option>
+                                    {availableWeights.map(w => (
+                                        <option key={w} value={w}>{w}gm</option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    type="text"
+                                    disabled
+                                    value={formData.productWeight !== '' ? `${formData.productWeight}gm` : '-'}
+                                    className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                                />
+                            )}
+                        </div>
+
+                        <div className="relative overflow-hidden">
+                            <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                                 Type
                             </label>
                             {availableTypes.length > 1 ? (
@@ -322,6 +376,7 @@ function AddTransaction() {
                                         prod.name === formData.productName &&
                                         prod.size === formData.size &&
                                         (prod.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                        (prod.weight || 0) === (Number(formData.productWeight) || 0) &&
                                         (prod.party?._id || prod.party) === formData.party
                                     );
                                     return p ? p.packetsPerLinear : '';
@@ -343,6 +398,7 @@ function AddTransaction() {
                                         prod.name === formData.productName &&
                                         prod.size === formData.size &&
                                         (prod.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                        (prod.weight || 0) === (Number(formData.productWeight) || 0) &&
                                         (prod.party?._id || prod.party) === formData.party
                                     );
                                     return p ? p.pcsPerPacket : '';
@@ -401,6 +457,7 @@ function AddTransaction() {
                                                 p.name === formData.productName &&
                                                 p.size === formData.size &&
                                                 (p.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                                (p.weight || 0) === (Number(formData.productWeight) || 0) &&
                                                 (p.party?._id || p.party) === formData.party
                                             );
                                             if (!product) return '(Stock: 0)';
@@ -423,6 +480,7 @@ function AddTransaction() {
                                         p.name === formData.productName &&
                                         p.size === formData.size &&
                                         (p.type || 'PPF TF') === (formData.productType || 'PPF TF') &&
+                                        (p.weight || 0) === (Number(formData.productWeight) || 0) &&
                                         (p.party?._id || p.party) === formData.party
                                     );
                                     if (!product) return undefined;

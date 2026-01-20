@@ -41,9 +41,12 @@ const productSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra'],
     required: true,
     default: 'PPF TF'
+  },
+  weight: {
+    type: Number,
+    default: 0
   },
   party: {
     type: mongoose.Schema.Types.ObjectId,
@@ -54,7 +57,7 @@ const productSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Compound index to ensure unique product name + size + type + party per user
-productSchema.index({ name: 1, size: 1, type: 1, party: 1, user: 1 }, { unique: true });
+// Compound index to ensure unique product name + size + type + weight + party per user
+productSchema.index({ name: 1, size: 1, type: 1, weight: 1, party: 1, user: 1 }, { unique: true });
 
 module.exports = mongoose.model('Product', productSchema);

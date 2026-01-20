@@ -12,6 +12,8 @@ import AddTransaction from './pages/AddTransaction';
 import Reports from './pages/Reports';
 import ManageParties from './pages/ManageParties';
 import AddParty from './pages/AddParty';
+import Input from './pages/Input';
+import Output from './pages/Output';
 
 import logo from './assets/logo.png';
 
@@ -101,6 +103,24 @@ function Navigation() {
                 Reports
               </Link>
               <Link
+                to="/input"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/input')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Production
+              </Link>
+              <Link
+                to="/output"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/output')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Delivery
+              </Link>
+              <Link
                 to="/parties"
                 className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/parties')
                   ? 'bg-primary-600 text-white'
@@ -153,72 +173,94 @@ function Navigation() {
           </div>
         </div>
       </div>
-      {mobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
-            <Link
-              to="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/products"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Products
-            </Link>
-            <Link
-              to="/manage-products"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Transactions
-            </Link>
-            <Link
-              to="/reports"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Reports
-            </Link>
-            <Link
-              to="/parties"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/parties')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Parties
-            </Link>
-            <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
-              {user?.email}
+      {
+        mobileMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+              <Link
+                to="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/products"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Products
+              </Link>
+              <Link
+                to="/manage-products"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Transactions
+              </Link>
+              <Link
+                to="/reports"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Reports
+              </Link>
+              <Link
+                to="/input"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/input')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Production
+              </Link>
+              <Link
+                to="/output"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/output')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Delivery
+              </Link>
+              <Link
+                to="/parties"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/parties')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Parties
+              </Link>
+              <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
+                {user?.email}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
+              >
+                Logout
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
-            >
-              Logout
-            </button>
           </div>
-        </div>
-      )}
-    </nav>
+        )
+      }
+    </nav >
   );
 }
 
@@ -291,6 +333,22 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <ManageParties />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/input"
+              element={
+                <ProtectedRoute>
+                  <Input />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/output"
+              element={
+                <ProtectedRoute>
+                  <Output />
                 </ProtectedRoute>
               }
             />

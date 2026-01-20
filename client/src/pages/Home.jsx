@@ -28,6 +28,7 @@ function Home() {
     name: '',
     size: '',
     type: '',
+    weight: '',
     party: ''
   });
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -58,6 +59,10 @@ function Home() {
     }
     // Filter by Type
     if (filters.type && item.type !== filters.type) {
+      return false;
+    }
+    // Filter by Weight
+    if (filters.weight && String(item.weight) !== filters.weight) {
       return false;
     }
     // Filter by Party
@@ -114,7 +119,8 @@ function Home() {
         t.productName === product.name &&
         t.size === product.size &&
         (t.productType || 'PPF TF') === (product.type || 'PPF TF') &&
-        (t.party?._id || t.party || null) === (product.party?._id || product.party || null)
+        (t.party?._id || t.party || null) === (product.party?._id || product.party || null) &&
+        (t.product?.weight || 0) === (product.weight || 0)
       ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
 
@@ -207,8 +213,22 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
             >
               <option value="">All Types</option>
-              {['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra'].map(t => (
+              {[...new Set(dashboardData.map(item => item.type))].filter(Boolean).sort().map(t => (
                 <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Weight</label>
+            <select
+              name="weight"
+              value={filters.weight}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+            >
+              <option value="">All Weights</option>
+              {[...new Set(dashboardData.map(item => item.weight))].filter(w => w !== undefined).sort((a, b) => a - b).map(w => (
+                <option key={w} value={w}>{w}gm</option>
               ))}
             </select>
           </div>
@@ -252,6 +272,8 @@ function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
                 Size: <span className="ml-1 font-semibold text-gray-700">{item.size}</span>
+                <span className="mx-2 text-gray-300">|</span>
+                W: <span className="ml-1 font-semibold text-gray-700">{item.weight || 0}gm</span>
               </div>
 
               <div className="space-y-4">

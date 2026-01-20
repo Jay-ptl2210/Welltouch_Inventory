@@ -176,6 +176,7 @@ function Reports() {
         const tableData = reportData.map(item => [
             item.product.name,
             item.product.size,
+            (item.product.weight || 0) + 'gm',
             item.product.party?.name || 'N/A',
             // Opening
             item.initial.linear.toFixed(1),
@@ -197,7 +198,7 @@ function Reports() {
 
         // Create totals row
         const totalsRow = [
-            { content: 'TOTAL', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+            { content: 'TOTAL', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
             // Opening
             totals.initial.linear.toFixed(1),
             totals.initial.packets.toFixed(1),
@@ -225,14 +226,14 @@ function Reports() {
             startY: 40,
             head: [
                 [
-                    { content: 'Product Info', colSpan: 3, styles: { halign: 'center', fillColor: [51, 51, 51] } },
+                    { content: 'Product Info', colSpan: 4, styles: { halign: 'center', fillColor: [51, 51, 51] } },
                     { content: 'Opening Stock', colSpan: 3, styles: { halign: 'center', fillColor: [63, 81, 181] } },
                     { content: 'Produced (+)', colSpan: 3, styles: { halign: 'center', fillColor: [76, 175, 80] } },
                     { content: 'Delivered (-)', colSpan: 3, styles: { halign: 'center', fillColor: [211, 63, 51] } },
                     { content: 'Closing Stock', colSpan: 3, styles: { halign: 'center', fillColor: [33, 150, 243] } }
                 ],
                 [
-                    'Product', 'Size', 'Party',
+                    'Product', 'Size', 'Weight', 'Party',
                     'Lin', 'Pkt', 'Pcs',
                     'Lin', 'Pkt', 'Pcs',
                     'Lin', 'Pkt', 'Pcs',
@@ -254,15 +255,15 @@ function Reports() {
             },
             columnStyles: {
                 0: { fontStyle: 'bold', cellWidth: 'auto' },
-                3: { fillColor: [248, 250, 252] },
                 4: { fillColor: [248, 250, 252] },
                 5: { fillColor: [248, 250, 252] },
-                9: { fillColor: [248, 250, 252] },
+                6: { fillColor: [248, 250, 252] },
                 10: { fillColor: [248, 250, 252] },
-                11: { fillColor: [248, 250, 252] }
+                11: { fillColor: [248, 250, 252] },
+                12: { fillColor: [248, 250, 252] }
             },
             didParseCell: function (data) {
-                if (data.section === 'body' && (data.column.index >= 3)) {
+                if (data.section === 'body' && (data.column.index >= 4)) {
                     data.cell.styles.halign = 'center';
                 }
             }
@@ -325,7 +326,7 @@ function Reports() {
                         <div className="relative">
                             <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
                                 <option value="">All Types</option>
-                                {['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra'].map(t => <option key={t} value={t}>{t}</option>)}
+                                {[...new Set(products.map(p => p.type))].filter(Boolean).sort().map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -449,6 +450,9 @@ function Reports() {
                                     </span>
                                     <span className="bg-white border text-gray-400 text-[10px] font-bold px-2 py-1 rounded-md uppercase border-gray-200">
                                         {item.product.size}
+                                    </span>
+                                    <span className="bg-white border text-gray-400 text-[10px] font-bold px-2 py-1 rounded-md uppercase border-gray-200">
+                                        {item.product.weight || 0}gm
                                     </span>
                                 </div>
                             </div>

@@ -12,7 +12,8 @@ function AddProduct() {
     pcsPerPacket: '',
     quantity: '',
     quantityUnit: 'linear', // linear, packet, pcs
-    party: ''
+    party: '',
+    weight: ''
   });
   const [parties, setParties] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -53,8 +54,12 @@ function AddProduct() {
         pcsPerPacket: parseFloat(formData.pcsPerPacket) || 0,
         quantity: parseFloat(formData.quantity) || 0,
         quantityUnit: formData.quantityUnit,
-        party: formData.party || undefined
+        party: formData.party || undefined,
+        weight: parseFloat(formData.weight) || 0
       };
+
+      console.log('Submitting product data:', productData);
+
       await addProduct(productData);
       setMessage({ type: 'success', text: 'Product added successfully!' });
       setFormData({
@@ -65,9 +70,12 @@ function AddProduct() {
         pcsPerPacket: '',
         quantity: '',
         quantityUnit: 'linear',
-        party: ''
+        party: '',
+        weight: ''
       });
     } catch (error) {
+      console.error('Error adding product:', error);
+      console.error('Error response:', error.response?.data);
       setMessage({
         type: 'error',
         text: error.response?.data?.error || 'Failed to add product'
@@ -152,20 +160,33 @@ function AddProduct() {
               <label htmlFor="type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
                 Type <span className="text-red-500">*</span>
               </label>
-              <select
+              <input
+                type="text"
                 id="type"
                 name="type"
                 required
                 value={formData.type}
                 onChange={handleChange}
-                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-              >
-                <option value="PPF TF">PPF TF</option>
-                <option value="PPF ST">PPF ST</option>
-                <option value="Cotton TF">Cotton TF</option>
-                <option value="Cotton ST">Cotton ST</option>
-                <option value="Ultra">Ultra</option>
-              </select>
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                placeholder="e.g., PPF TF, Cotton ST"
+              />
+            </div>
+            <div>
+              <label htmlFor="weight" className="block text-xs md:text-sm font-medium text-gray-700 mb-1 md:mb-2">
+                Weight (gm) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="weight"
+                name="weight"
+                required
+                step="1"
+                min="0"
+                value={formData.weight}
+                onChange={handleChange}
+                className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
+                placeholder="Enter weight in grams"
+              />
             </div>
           </div>
 

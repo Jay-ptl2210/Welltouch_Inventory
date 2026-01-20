@@ -261,7 +261,7 @@ function ManageProducts() {
                       <option value="">Select a product</option>
                       {products.map(p => (
                         <option key={p._id} value={p._id}>
-                          {p.name} - {p.size}
+                          {p.name} - {p.size} ({p.type}) - {p.weight}gm
                         </option>
                       ))}
                     </select>
@@ -289,7 +289,7 @@ function ManageProducts() {
                     <input
                       type="text"
                       readOnly
-                      value={selectedProduct?.type || 'Stat (ST)'}
+                      value={`${selectedProduct?.type || 'PPF TF'} (${selectedProduct?.weight || 0}gm)`}
                       className="w-full px-4 py-3 border border-gray-100 rounded-xl bg-gray-50 text-gray-500 font-medium outline-none"
                     />
                   </div>
@@ -505,8 +505,8 @@ function ManageProducts() {
               <tr>
                 <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Date</th>
                 <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Product</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Size</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Type</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Size & Type</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Weight</th>
                 <th className="px-8 py-5 text-center text-[11px] font-black text-gray-400 uppercase tracking-widest">Effect</th>
 
                 <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Quantity</th>
@@ -524,10 +524,10 @@ function ManageProducts() {
                     <div className="text-sm font-bold text-gray-800">{t.product?.name}</div>
                   </td>
                   <td className="px-8 py-6 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-500">{t.product?.size}</div>
+                    <div className="text-sm font-medium text-gray-500">{t.product?.size} ({t.product?.type || '-'})</div>
                   </td>
                   <td className="px-8 py-6 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-400">{t.product?.type || '-'}</div>
+                    <div className="text-sm font-medium text-gray-400">{t.product?.weight || 0}gm</div>
                   </td>
                   <td className="px-8 py-6 text-center whitespace-nowrap">
                     <div className={`mx-auto w-8 h-8 rounded-full flex items-center justify-center text-[13px] font-bold ${t.type === 'produce' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'

@@ -20,12 +20,14 @@ function Products() {
     pcsPerPacket: '',
     quantity: '',
     quantityUnit: 'pcs',
-    party: ''
+    party: '',
+    weight: '0'
   });
   const [filters, setFilters] = useState({
     name: '',
     size: '',
     type: '',
+    weight: '',
     party: ''
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,7 +89,8 @@ function Products() {
       pcsPerPacket: product.pcsPerPacket,
       quantity: product.quantity,
       quantityUnit: product.quantityUnit || 'pcs',
-      party: product.party?._id || product.party || ''
+      party: product.party?._id || product.party || '',
+      weight: product.weight || '0'
     });
   };
 
@@ -101,7 +104,8 @@ function Products() {
       pcsPerPacket: '',
       quantity: '',
       quantityUnit: 'pcs',
-      party: ''
+      party: '',
+      weight: '0'
     });
   };
 
@@ -146,6 +150,9 @@ function Products() {
     if (filters.type && product.type !== filters.type) {
       return false;
     }
+    if (filters.weight && String(product.weight) !== filters.weight) {
+      return false;
+    }
     if (filters.party && (product.party?._id || product.party) !== filters.party) {
       return false;
     }
@@ -158,7 +165,9 @@ function Products() {
     currentPage * pageSize
   );
 
-  const uniqueSizes = [...new Set(products.map(p => p.size))];
+  const uniqueSizes = [...new Set(products.map(p => p.size))].filter(Boolean).sort();
+  const uniqueTypes = [...new Set(products.map(p => p.type))].filter(Boolean).sort();
+  const uniqueWeights = [...new Set(products.map(p => p.weight))].filter(w => w !== undefined).sort((a, b) => a - b);
 
   const toCounts = (product) => {
     const packetsPerLinear = Number(product.packetsPerLinear) || 0;
@@ -234,8 +243,22 @@ function Products() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
             >
               <option value="">All Types</option>
-              {['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra', 'OTHER'].map(type => (
+              {uniqueTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Weight</label>
+            <select
+              name="weight"
+              value={filters.weight}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+            >
+              <option value="">All Weights</option>
+              {uniqueWeights.map(w => (
+                <option key={w} value={w}>{w}gm</option>
               ))}
             </select>
           </div>
@@ -297,6 +320,7 @@ function Products() {
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product Name</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Size & Type</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Weight (gm)</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Party</th>
                     <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Current Stock</th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -327,25 +351,31 @@ function Products() {
                             <div className="space-y-2">
                               <input
                                 type="text"
-                                name="size"
-                                value={editForm.size}
-                                onChange={handleEditChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-xs"
-                              />
-                              <select
                                 name="type"
                                 value={editForm.type}
                                 onChange={handleEditChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-xs"
-                              >
-                                {['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra', 'OTHER'].map(t => <option key={t} value={t}>{t}</option>)}
-                              </select>
+                              />
                             </div>
                           ) : (
                             <div className="flex flex-col">
                               <span className="text-sm text-gray-700">{product.size}</span>
                               <span className="text-xs text-primary-600 font-medium">{product.type}</span>
                             </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              name="weight"
+                              step="0.01"
+                              value={editForm.weight}
+                              onChange={handleEditChange}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            />
+                          ) : (
+                            <span className="text-sm text-gray-500">{product.weight || 0} gm</span>
                           )}
                         </td>
                         <td className="px-6 py-4">

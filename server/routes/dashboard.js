@@ -16,12 +16,13 @@ router.get('/', protect, async (req, res) => {
     products.forEach(product => {
       const type = product.type || 'PPF TF';
       const partyId = product.party?._id?.toString() || 'no-party';
-      const key = `${product.name}-${product.size}-${type}-${partyId}`;
+      const key = `${product.name}-${product.size}-${type}-${partyId}-${product.weight || '0'}`;
       if (!dashboardMap[key]) {
         dashboardMap[key] = {
           name: product.name,
           size: product.size,
           type: type,
+          weight: product.weight,
           party: product.party,
           quantity: 0,
           packetsPerLinear: product.packetsPerLinear || 0,
