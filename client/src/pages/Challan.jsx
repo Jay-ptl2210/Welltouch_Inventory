@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getProducts, addTransaction, getParties, getCustomers, getChallans, saveChallan, deleteChallan } from '../services/api';
+import { getProducts, addTransaction, getParties, getCustomers, getChallans, saveChallan, updateChallan, deleteChallan } from '../services/api';
 import { format } from 'date-fns';
 import { toPcs } from '../utils/calculations';
 import jsPDF from 'jspdf';
@@ -16,6 +16,7 @@ function Challan() {
     const [message, setMessage] = useState({ type: '', text: '' });
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 8;
+    const [editingChallan, setEditingChallan] = useState(null);
 
     const [headerData, setHeaderData] = useState({
         customerId: '',
@@ -323,6 +324,46 @@ function Challan() {
         }
     };
 
+    const handleEdit = (challan) => {
+        setEditingChallan(challan);
+        setHeaderData({
+            customerId: challan.customer?._id || challan.customer,
+            address: challan.address || '',
+            shipName: challan.shipName || '',
+            shipAddress: challan.shipAddress || '',
+            transport: challan.transport || '',
+            vehicleNumber: challan.vehicleNumber || '',
+            date: new Date(challan.date).toISOString().split('T')[0]
+        });
+
+        // Map items back to form format
+        const formItems = challan.items.map(item => ({
+            ...item,
+            productId: item.product?._id || item.product,
+            qtyPcs: item.quantityInPcs,
+            partyId: item.party // Note: party might not be in item if not saved, but we do our best
+        }));
+        setItems(formItems);
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        setMessage({ type: 'info', text: `Editing Challan ${challan.challanNumber}` });
+    };
+
+    const cancelEdit = () => {
+        setEditingChallan(null);
+        setHeaderData({
+            customerId: '',
+            address: '',
+            shipName: '',
+            shipAddress: '',
+            transport: '',
+            vehicleNumber: '',
+            date: new Date().toISOString().split('T')[0]
+        });
+        setItems([]);
+        setMessage({ type: '', text: '' });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (items.length === 0) {
@@ -341,6 +382,8 @@ function Challan() {
 
             for (const item of items) {
                 const p = products.find(prod => prod._id === item.productId);
+                // Fallback if product not found (might happen if deleted)
+                if (!p) continue;
 
                 const qtyPcs = item.qtyPcs;
                 const lin = item.unit === 'linear' ? Number(item.quantity) : (p.packetsPerLinear > 0 && p.pcsPerPacket > 0 ? (qtyPcs / (p.packetsPerLinear * p.pcsPerPacket)) : 0);
@@ -350,18 +393,7 @@ function Challan() {
                 totalPkt += pkt;
                 totalPcs += qtyPcs;
 
-                transactionsToSave.push({
-                    productId: p._id,
-                    productName: p.name,
-                    size: p.size,
-                    party: item.partyId,
-                    type: 'delivered',
-                    quantity: item.quantity,
-                    unit: item.unit,
-                    date: headerData.date,
-                    note: `Challan - Veh: ${headerData.vehicleNumber}`
-                });
-
+                // Re-prepare items for saving
                 challanItems.push({
                     product: p._id,
                     productName: p.name,
@@ -374,48 +406,75 @@ function Challan() {
                     packetsPerLinear: p.packetsPerLinear,
                     pcsPerPacket: p.pcsPerPacket
                 });
+
+                // Only create NEW transactions if NOT editing
+                // Todo: Handle transaction updates for edits in future
+                if (!editingChallan) {
+                    transactionsToSave.push({
+                        productId: p._id,
+                        productName: p.name,
+                        size: p.size,
+                        party: item.partyId,
+                        type: 'delivered',
+                        quantity: item.quantity,
+                        unit: item.unit,
+                        date: headerData.date,
+                        note: `Challan - Veh: ${headerData.vehicleNumber}`
+                    });
+                }
             }
 
-            // 1. SAVE CHALLAN RECORD FIRST (to get the generated number)
-            const savedChallanRes = await saveChallan({
-                customer: headerData.customerId,
-                address: headerData.address,
-                shipName: headerData.shipName,
-                shipAddress: headerData.shipAddress,
-                transport: headerData.transport,
-                vehicleNumber: headerData.vehicleNumber,
-                date: headerData.date,
-                items: challanItems,
-                totalLinear: totalLin,
-                totalPackets: totalPkt,
-                totalPieces: totalPcs
-            });
+            let finalChallanData;
 
-            const generatedChallanData = savedChallanRes.data.data || savedChallanRes.data;
-            const generatedChallanNo = generatedChallanData.challanNumber || 'N/A';
+            if (editingChallan) {
+                const res = await updateChallan(editingChallan._id, {
+                    customer: headerData.customerId,
+                    address: headerData.address,
+                    shipName: headerData.shipName,
+                    shipAddress: headerData.shipAddress,
+                    transport: headerData.transport,
+                    vehicleNumber: headerData.vehicleNumber,
+                    date: headerData.date,
+                    items: challanItems,
+                    totalLinear: totalLin,
+                    totalPackets: totalPkt,
+                    totalPieces: totalPcs
+                });
+                finalChallanData = res.data.data || res.data;
+                setMessage({ type: 'success', text: 'Challan updated and PDF generated!' });
+            } else {
+                // 1. SAVE CHALLAN RECORD FIRST
+                const savedChallanRes = await saveChallan({
+                    customer: headerData.customerId,
+                    address: headerData.address,
+                    shipName: headerData.shipName,
+                    shipAddress: headerData.shipAddress,
+                    transport: headerData.transport,
+                    vehicleNumber: headerData.vehicleNumber,
+                    date: headerData.date,
+                    items: challanItems,
+                    totalLinear: totalLin,
+                    totalPackets: totalPkt,
+                    totalPieces: totalPcs
+                });
 
-            // 2. UPDATE NOTES AND SAVE TRANSACTIONS
-            const updatedTransactions = transactionsToSave.map(t => ({
-                ...t,
-                note: `Challan No# ${generatedChallanNo} - Veh: ${headerData.vehicleNumber || 'N/A'}`
-            }));
+                finalChallanData = savedChallanRes.data.data || savedChallanRes.data;
+                const generatedChallanNo = finalChallanData.challanNumber || 'N/A';
 
-            await Promise.all(updatedTransactions.map(t => addTransaction(t)));
+                // 2. UPDATE NOTES AND SAVE TRANSACTIONS
+                const updatedTransactions = transactionsToSave.map(t => ({
+                    ...t,
+                    note: `Challan No# ${generatedChallanNo} - Veh: ${headerData.vehicleNumber || 'N/A'}`
+                }));
+
+                await Promise.all(updatedTransactions.map(t => addTransaction(t)));
+                setMessage({ type: 'success', text: 'Challan saved and PDF generated!' });
+            }
 
             // Generate PDF with the returned challan data
-            generatePDF([...challanItems], generatedChallanData);
+            generatePDF([...challanItems], finalChallanData);
 
-            setMessage({ type: 'success', text: 'Challan saved and PDF generated!' });
-            setHeaderData({
-                customerId: '',
-                address: '',
-                shipName: '',
-                shipAddress: '',
-                transport: '',
-                vehicleNumber: '',
-                date: new Date().toISOString().split('T')[0]
-            });
-            setItems([]);
+            cancelEdit(); // Reset form
             loadInitialData();
         } catch (err) {
             setMessage({ type: 'error', text: err.response?.data?.error || err.message });
@@ -439,10 +498,20 @@ function Challan() {
                             <img src={logo} alt="Welltouch" className="h-10 w-auto" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">New Challan</h1>
+                            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+                                {editingChallan ? `Edit Challan ${editingChallan.challanNumber}` : 'New Challan'}
+                            </h1>
                             <p className="text-gray-500 font-medium">Generate professional delivery documents</p>
                         </div>
                     </div>
+                    {editingChallan && (
+                        <button
+                            onClick={cancelEdit}
+                            className="bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2 px-6 rounded-xl transition-all"
+                        >
+                            Cancel Edit
+                        </button>
+                    )}
                 </div>
 
                 <div className="space-y-10">
@@ -683,7 +752,7 @@ function Challan() {
                             ) : (
                                 <>
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16l-5-5h3V4h4v7h3l-5 5zM5 18h14v2H5v-2z" /></svg>
-                                    Generate & Save Challan
+                                    {editingChallan ? 'Update & Re-generate PDF' : 'Generate & Save Challan'}
                                 </>
                             )}
                         </button>
@@ -736,6 +805,13 @@ function Challan() {
                                                 title="Print PDF"
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16l-5-5h3V4h4v7h3l-5 5zM5 18h14v2H5v-2z" /></svg>
+                                            </button>
+                                            <button
+                                                onClick={() => handleEdit(c)}
+                                                className="p-3 bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm rounded-xl transition-all"
+                                                title="Edit Record"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(c._id)}

@@ -98,6 +98,7 @@ export const deleteParty = (id) => api.delete(`/parties/${id}`);
 // Challans API
 export const getChallans = () => api.get('/challans');
 export const saveChallan = (challan) => api.post('/challans', challan);
+export const updateChallan = (id, challan) => api.put(`/challans/${id}`, challan);
 export const deleteChallan = (id) => api.delete(`/challans/${id}`);
 
 // Customers API

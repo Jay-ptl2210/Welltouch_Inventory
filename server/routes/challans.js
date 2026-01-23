@@ -46,6 +46,29 @@ router.get('/', protect, async (req, res) => {
     }
 });
 
+// @desc    Update a challan
+// @route   PUT /api/challans/:id
+// @access  Private
+router.put('/:id', protect, async (req, res) => {
+    try {
+        const challan = await Challan.findOne({ _id: req.params.id, user: req.user.id });
+
+        if (!challan) {
+            return res.status(404).json({ success: false, error: 'Challan not found' });
+        }
+
+        const updatedChallan = await Challan.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
+
+        res.status(200).json({ success: true, data: updatedChallan });
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+});
+
 // @desc    Delete a challan
 // @route   DELETE /api/challans/:id
 // @access  Private

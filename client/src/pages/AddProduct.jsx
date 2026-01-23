@@ -7,7 +7,7 @@ function AddProduct() {
   const [formData, setFormData] = useState({
     name: '',
     size: '',
-    type: 'PPF TF',
+    type: '',
     packetsPerLinear: '',
     pcsPerPacket: '',
     quantity: '',
