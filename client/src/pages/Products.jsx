@@ -20,12 +20,14 @@ function Products() {
     pcsPerPacket: '',
     quantity: '',
     quantityUnit: 'pcs',
-    party: ''
+    party: '',
+    weight: '0'
   });
   const [filters, setFilters] = useState({
     name: '',
     size: '',
     type: '',
+    weight: '',
     party: ''
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,7 +89,8 @@ function Products() {
       pcsPerPacket: product.pcsPerPacket,
       quantity: product.quantity,
       quantityUnit: product.quantityUnit || 'pcs',
-      party: product.party?._id || product.party || ''
+      party: product.party?._id || product.party || '',
+      weight: product.weight || '0'
     });
   };
 
@@ -101,7 +104,8 @@ function Products() {
       pcsPerPacket: '',
       quantity: '',
       quantityUnit: 'pcs',
-      party: ''
+      party: '',
+      weight: '0'
     });
   };
 
@@ -146,6 +150,9 @@ function Products() {
     if (filters.type && product.type !== filters.type) {
       return false;
     }
+    if (filters.weight && String(product.weight) !== filters.weight) {
+      return false;
+    }
     if (filters.party && (product.party?._id || product.party) !== filters.party) {
       return false;
     }
@@ -158,7 +165,9 @@ function Products() {
     currentPage * pageSize
   );
 
-  const uniqueSizes = [...new Set(products.map(p => p.size))];
+  const uniqueSizes = [...new Set(products.map(p => p.size))].filter(Boolean).sort();
+  const uniqueTypes = [...new Set(products.map(p => p.type))].filter(Boolean).sort();
+  const uniqueWeights = [...new Set(products.map(p => p.weight))].filter(w => w !== undefined).sort((a, b) => a - b);
 
   const toCounts = (product) => {
     const packetsPerLinear = Number(product.packetsPerLinear) || 0;
@@ -201,15 +210,32 @@ function Products() {
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search Product</label>
-            <input
-              type="text"
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Party</label>
+            <select
+              name="party"
+              value={filters.party}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
+            >
+              <option value="">All Parties</option>
+              {parties.map(party => (
+                <option key={party._id} value={party._id}>{party.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Name</label>
+            <select
               name="name"
               value={filters.name}
               onChange={handleFilterChange}
-              placeholder="Search by name..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-            />
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
+            >
+              <option value="">All Products</option>
+              {[...new Set(products.map(p => p.name))].sort().map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
           </div>
           <div className="form-group">
             <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Size</label>
@@ -217,7 +243,7 @@ function Products() {
               name="size"
               value={filters.size}
               onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Sizes</option>
               {uniqueSizes.map(size => (
@@ -231,25 +257,25 @@ function Products() {
               name="type"
               value={filters.type}
               onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Types</option>
-              {['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra', 'OTHER'].map(type => (
+              {uniqueTypes.map(type => (
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
           </div>
           <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Party</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Weight</label>
             <select
-              name="party"
-              value={filters.party}
+              name="weight"
+              value={filters.weight}
               onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
-              <option value="">All Parties</option>
-              {parties.map(party => (
-                <option key={party._id} value={party._id}>{party.name}</option>
+              <option value="">All Weights</option>
+              {uniqueWeights.map(w => (
+                <option key={w} value={w}>{w}gm</option>
               ))}
             </select>
           </div>
@@ -297,6 +323,7 @@ function Products() {
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Product Name</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Size & Type</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Weight (gm)</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Party</th>
                     <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Current Stock</th>
                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
@@ -327,25 +354,31 @@ function Products() {
                             <div className="space-y-2">
                               <input
                                 type="text"
-                                name="size"
-                                value={editForm.size}
-                                onChange={handleEditChange}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-xs"
-                              />
-                              <select
                                 name="type"
                                 value={editForm.type}
                                 onChange={handleEditChange}
                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-xs"
-                              >
-                                {['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra', 'OTHER'].map(t => <option key={t} value={t}>{t}</option>)}
-                              </select>
+                              />
                             </div>
                           ) : (
                             <div className="flex flex-col">
                               <span className="text-sm text-gray-700">{product.size}</span>
                               <span className="text-xs text-primary-600 font-medium">{product.type}</span>
                             </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              name="weight"
+                              step="0.01"
+                              value={editForm.weight}
+                              onChange={handleEditChange}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm"
+                            />
+                          ) : (
+                            <span className="text-sm text-gray-500">{product.weight || 0} gm</span>
                           )}
                         </td>
                         <td className="px-6 py-4">

@@ -8,7 +8,6 @@ const transactionSchema = new mongoose.Schema({
   },
   productType: {
     type: String,
-    enum: ['PPF TF', 'PPF ST', 'Cotton TF', 'Cotton ST', 'Ultra'],
     required: true,
     default: 'PPF TF'
   },

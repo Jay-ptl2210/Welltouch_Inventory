@@ -34,7 +34,7 @@ router.get('/', protect, async (req, res) => {
     const transactions = await Transaction.find({ user: req.user._id })
       .populate({
         path: 'product',
-        select: 'name size',
+        select: 'name size weight',
         strictPopulate: false // Allow populate even if product is deleted
       })
       .sort({ date: -1, createdAt: -1 }); // Sort by date descending, then by createdAt descending (newest first)

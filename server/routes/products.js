@@ -29,7 +29,7 @@ router.get('/', protect, async (req, res) => {
   try {
     const products = await Product.find({ user: req.user._id })
       .populate('party', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ quantity: -1, createdAt: -1 });
     res.json(products);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch products' });
@@ -69,7 +69,8 @@ router.post('/', protect, async (req, res) => {
       packetsPerLinear,
       pcsPerPacket,
       type = 'PPF TF',
-      party
+      party,
+      weight = 0
     } = req.body;
 
     if (!name || !size || quantity === undefined) {
@@ -80,14 +81,27 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ error: 'packetsPerLinear and pcsPerPacket are required' });
     }
 
-    // Check if product with same name, size and type exists
+
+    console.log('[Add Product] Searching for existing product:', {
+      name,
+      size,
+      type,
+      weight: Number(weight) || 0,
+      party: party || undefined,
+      user: req.user._id
+    });
+
     const existingProduct = await Product.findOne({
       name,
       size,
       type,
+      weight: Number(weight) || 0,
       party: party || undefined,
       user: req.user._id
     }).populate('party', 'name');
+
+    console.log('[Add Product] Existing product found:', existingProduct ? 'YES' : 'NO');
+
 
     const incomingPcs = toPcs(quantity, quantityUnit, { packetsPerLinear, pcsPerPacket });
 
@@ -130,13 +144,14 @@ router.post('/', protect, async (req, res) => {
       pcsPerPacket,
       type,
       party,
+      weight,
       user: req.user._id
     });
 
     res.status(201).json(product);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ error: `Product with name "${name}", size "${size}" and type "${type}" already exists` });
+      return res.status(400).json({ error: `Product with same Name, Size, Type, Weight, and Party already exists` });
     }
     const msg = error.message || 'Failed to add product';
     res.status(500).json({ error: msg });
@@ -157,7 +172,8 @@ router.put('/:id', protect, async (req, res) => {
       pcsPerPacket,
       previousStock,
       type,
-      party
+      party,
+      weight
     } = req.body;
 
     const product = await Product.findOne({
@@ -175,6 +191,7 @@ router.put('/:id', protect, async (req, res) => {
     if (pcsPerPacket !== undefined) product.pcsPerPacket = Number(pcsPerPacket);
     if (type !== undefined) product.type = type;
     if (party !== undefined) product.party = party;
+    if (weight !== undefined) product.weight = Number(weight);
 
     if (quantity !== undefined) {
       const newPcs = toPcs(quantity, quantityUnit || 'pcs', {
@@ -214,8 +231,8 @@ router.put('/:id', protect, async (req, res) => {
 
     await product.save();
 
-    // If name, size, type or party changed, propagate to related transactions for display consistency
-    if (name !== undefined || size !== undefined || type !== undefined || party !== undefined) {
+    // If name, size, type, weight or party changed, propagate to related transactions for display consistency
+    if (name !== undefined || size !== undefined || type !== undefined || weight !== undefined || party !== undefined) {
       // Reload product to get party name if it was a change
       const updatedProduct = await Product.findById(product._id).populate('party', 'name');
 
@@ -236,7 +253,7 @@ router.put('/:id', protect, async (req, res) => {
     res.json(product);
   } catch (error) {
     if (error.code === 11000) {
-      return res.status(400).json({ error: `Product with name "${name}", size "${size}" and type "${type}" already exists` });
+      return res.status(400).json({ error: `Product with same Name, Size, Type, and Weight already exists` });
     }
     const msg = error.message || 'Failed to update product';
     res.status(500).json({ error: msg });

@@ -12,6 +12,10 @@ import AddTransaction from './pages/AddTransaction';
 import Reports from './pages/Reports';
 import ManageParties from './pages/ManageParties';
 import AddParty from './pages/AddParty';
+import Input from './pages/Input';
+import Output from './pages/Output';
+import Challan from './pages/Challan';
+import ManageCustomers from './pages/ManageCustomers';
 
 import logo from './assets/logo.png';
 
@@ -54,7 +58,7 @@ function Navigation() {
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center">
@@ -83,6 +87,33 @@ function Navigation() {
                 Products
               </Link>
               <Link
+                to="/input"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/input')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Production
+              </Link>
+              <Link
+                to="/output"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/output')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Delivery
+              </Link>
+              <Link
+                to="/challan"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/challan')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Challan
+              </Link>
+              <Link
                 to="/manage-products"
                 className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/manage-products')
                   ? 'bg-primary-600 text-white'
@@ -108,6 +139,15 @@ function Navigation() {
                   }`}
               >
                 Parties
+              </Link>
+              <Link
+                to="/customers"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/customers')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Customers
               </Link>
 
               <div className="relative ml-3" ref={userMenuRef}>
@@ -153,72 +193,114 @@ function Navigation() {
           </div>
         </div>
       </div>
-      {mobileMenuOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
-            <Link
-              to="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/products"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Products
-            </Link>
-            <Link
-              to="/manage-products"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Transactions
-            </Link>
-            <Link
-              to="/reports"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Reports
-            </Link>
-            <Link
-              to="/parties"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/parties')
-                ? 'bg-primary-600 text-white'
-                : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                }`}
-            >
-              Parties
-            </Link>
-            <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
-              {user?.email}
+      {
+        mobileMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
+              <Link
+                to="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Dashboard
+              </Link>
+              <Link
+                to="/products"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Products
+              </Link>
+              <Link
+                to="/input"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/input')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Production
+              </Link>
+              <Link
+                to="/output"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/output')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Delivery
+              </Link>
+              <Link
+                to="/challan"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/challan')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Challan
+              </Link>
+              <Link
+                to="/manage-products"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Transactions
+              </Link>
+              <Link
+                to="/reports"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Reports
+              </Link>
+              <Link
+                to="/parties"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/parties')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Parties
+              </Link>
+              <Link
+                to="/customers"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/customers')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Customers
+              </Link>
+              <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
+                {user?.email}
+              </div>
+              <button
+                onClick={handleLogout}
+                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
+              >
+                Logout
+              </button>
             </div>
-            <button
-              onClick={handleLogout}
-              className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
-            >
-              Logout
-            </button>
           </div>
-        </div>
-      )}
-    </nav>
+        )
+      }
+    </nav >
   );
 }
 
@@ -234,7 +316,7 @@ function AppContent() {
     >
       <div className="min-h-screen flex flex-col">
         <Navigation />
-        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-4 overflow-x-hidden flex-grow w-full">
+        <main className="w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-4 overflow-x-hidden flex-grow">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -295,6 +377,38 @@ function AppContent() {
               }
             />
             <Route
+              path="/input"
+              element={
+                <ProtectedRoute>
+                  <Input />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/output"
+              element={
+                <ProtectedRoute>
+                  <Output />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/challan"
+              element={
+                <ProtectedRoute>
+                  <Challan />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers"
+              element={
+                <ProtectedRoute>
+                  <ManageCustomers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/add-party"
               element={
                 <ProtectedRoute>
@@ -308,7 +422,7 @@ function AppContent() {
         {/* Footer */}
         {isAuthenticated && (
           <footer className="bg-white border-t border-gray-200 mt-auto py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-gray-500 text-sm">
                 &copy; {new Date().getFullYear()} Welltouch Inventory. All rights reserved.
               </p>

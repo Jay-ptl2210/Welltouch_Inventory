@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const Product = require('./models/Product');
 const Transaction = require('./models/Transaction');
+const Party = require('./models/Party');
 
 dotenv.config();
 
@@ -27,30 +28,60 @@ const heal = async () => {
                         changed = true;
                     }
                     if (tx.productType !== product.type) {
-                        console.log(`Healing Transaction ${tx._id}: changing productType from "${tx.productType}" to "${product.type}" (Matches Product ID)`);
+                        console.log(`Healing Transaction ${tx._id}: changing productType from "${tx.productType}" to "${product.type}"`);
                         tx.productType = product.type;
                         changed = true;
                     }
+                    if (product.party && (!tx.party || tx.party.toString() !== product.party.toString())) {
+                        console.log(`Healing Transaction ${tx._id}: adding party reference ${product.party}`);
+                        tx.party = product.party;
+                        changed = true;
+                    }
+
+                    if (product.party && !tx.partyName) {
+                        const partyObj = await Party.findById(product.party);
+                        if (partyObj) {
+                            console.log(`Healing Transaction ${tx._id}: setting partyName to "${partyObj.name}"`);
+                            tx.partyName = partyObj.name;
+                            changed = true;
+                        }
+                    }
+
                     if (changed) {
                         await tx.save();
                     }
                 } else {
-                    console.log(`Warning: Transaction ${tx._id} points to missing product ID ${tx.product}`);
+                    console.log(`Warning: Transaction ${tx._id} (${tx.productName}) points to missing product ID ${tx.product}. Attempting fallback...`);
+                    // Try to find a match by name, size
+                    const match = await Product.findOne({
+                        name: tx.productName,
+                        size: tx.size
+                    }).populate('party');
+
+                    if (match) {
+                        console.log(`Linking Transaction ${tx._id} to Product ${match._id} based on name/size`);
+                        tx.product = match._id;
+                        tx.productId = match._id.toString();
+                        tx.productType = match.type;
+                        tx.party = match.party ? match.party._id : undefined;
+                        tx.partyName = match.party ? match.party.name : undefined;
+                        await tx.save();
+                    }
                 }
             } else {
-                console.log(`Warning: Transaction ${tx._id} has no product reference.`);
-                // Try to find a match by name, size, type
-                const pType = tx.productType || 'PPF TF';
+                console.log(`Warning: Transaction ${tx._id} (${tx.productName}) has no product reference. Attempting fallback...`);
+                // Try to find a match by name, size
                 const match = await Product.findOne({
                     name: tx.productName,
-                    size: tx.size,
-                    type: pType
-                });
+                    size: tx.size
+                }).populate('party');
                 if (match) {
-                    console.log(`Linking Transaction ${tx._id} to Product ${match._id} based on name/size/type`);
+                    console.log(`Linking Transaction ${tx._id} to Product ${match._id} based on name/size`);
                     tx.product = match._id;
                     tx.productId = match._id.toString();
                     tx.productType = match.type;
+                    tx.party = match.party ? match.party._id : undefined;
+                    tx.partyName = match.party ? match.party.name : undefined;
                     await tx.save();
                 }
             }
