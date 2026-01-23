@@ -15,10 +15,11 @@ function Input() {
     const [editingTransaction, setEditingTransaction] = useState(null);
 
     const [formData, setFormData] = useState({
+        partyId: '',
         productId: '',
         type: 'produce',
         quantity: '',
-        unit: 'packet',
+        unit: 'linear',
         date: new Date().toISOString().split('T')[0],
         note: ''
     });
@@ -48,7 +49,13 @@ function Input() {
 
     const handleFormChange = (e) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => {
+            const newState = { ...prev, [name]: value };
+            if (name === 'partyId') {
+                newState.productId = ''; // Reset product when party changes
+            }
+            return newState;
+        });
     };
 
     const handleSubmit = async (e) => {
@@ -86,10 +93,11 @@ function Input() {
                 setMessage({ type: 'success', text: 'Production recorded successfully' });
             }
             setFormData({
+                partyId: '',
                 productId: '',
                 type: 'produce',
                 quantity: '',
-                unit: 'packet',
+                unit: 'linear',
                 date: new Date().toISOString().split('T')[0],
                 note: ''
             });
@@ -105,7 +113,8 @@ function Input() {
     const handleEdit = (transaction) => {
         setEditingTransaction(transaction);
         setFormData({
-            productId: transaction.product._id || transaction.product,
+            partyId: transaction.party?._id || transaction.party || '',
+            productId: transaction.product?._id || transaction.product || '',
             type: 'produce',
             quantity: transaction.quantity,
             unit: transaction.unit || 'packet',
@@ -132,6 +141,15 @@ function Input() {
         currentPage * pageSize
     );
 
+    const getLinearValue = (t) => {
+        const p = products.find(prod => prod._id === (t.product?._id || t.product));
+        if (p && p.packetsPerLinear > 0 && p.pcsPerPacket > 0) {
+            return fromPcs(t.quantityInPcs, 'linear', p);
+        }
+        if (t.unit === 'linear') return t.quantity;
+        return null;
+    };
+
     return (
         <div className="container mx-auto px-4 py-8 space-y-8">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
@@ -144,20 +162,39 @@ function Input() {
 
                 <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="md:col-span-2 lg:col-span-1">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Party</label>
+                        <select
+                            name="partyId"
+                            required
+                            value={formData.partyId}
+                            onChange={handleFormChange}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white"
+                        >
+                            <option value="">Select a party</option>
+                            {parties.map(p => (
+                                <option key={p._id} value={p._id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="md:col-span-2 lg:col-span-1">
                         <label className="block text-sm font-bold text-gray-700 mb-2">Product</label>
                         <select
                             name="productId"
                             required
                             value={formData.productId}
                             onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white"
+                            disabled={!formData.partyId}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                         >
-                            <option value="">Select a product</option>
-                            {products.map(p => (
-                                <option key={p._id} value={p._id}>
-                                    {p.name} - {p.size} ({p.type}) - {p.weight}gm
-                                </option>
-                            ))}
+                            <option value="">{formData.partyId ? 'Select a product' : 'Select a party first'}</option>
+                            {products
+                                .filter(p => !formData.partyId || (p.party?._id || p.party) === formData.partyId)
+                                .map(p => (
+                                    <option key={p._id} value={p._id}>
+                                        {p.name} - {p.size} ({p.type}) - {p.weight}gm
+                                    </option>
+                                ))}
                         </select>
                     </div>
 
@@ -231,7 +268,7 @@ function Input() {
                                         productId: '',
                                         type: 'produce',
                                         quantity: '',
-                                        unit: 'packet',
+                                        unit: 'linear',
                                         date: new Date().toISOString().split('T')[0],
                                         note: ''
                                     });
@@ -271,7 +308,15 @@ function Input() {
                                     <td className="px-6 py-4 text-sm font-bold text-gray-900">{format(new Date(t.date), 'dd-MM-yyyy')}</td>
                                     <td className="px-6 py-4 text-sm text-gray-800">{t.productName} ({t.size}) - {products.find(p => p._id === (t.product?._id || t.product))?.weight || 0}gm</td>
                                     <td className="px-6 py-4 text-xs font-medium text-gray-500 uppercase">{t.productType}</td>
-                                    <td className="px-6 py-4 text-sm font-extrabold text-green-700">+{t.quantity} <span className="text-[10px] opacity-60 uppercase">{t.unit}</span></td>
+                                    <td className="px-6 py-4 text-sm font-extrabold text-green-700">
+                                        {(() => {
+                                            const linear = getLinearValue(t);
+                                            if (linear !== null) {
+                                                return `+${linear.toFixed(1)} LINEAR`;
+                                            }
+                                            return `+${t.quantity} ${t.unit}`;
+                                        })()}
+                                    </td>
                                     <td className="px-6 py-4 text-xs text-gray-400 italic line-clamp-1">{t.note || '-'}</td>
                                     <td className="px-6 py-4 text-right flex justify-end gap-2">
                                         <button onClick={() => handleEdit(t)} className="p-2 text-indigo-400 hover:text-indigo-600 transition-colors" title="Edit">

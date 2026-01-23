@@ -14,7 +14,7 @@ function AddTransaction() {
         party: '',
         type: 'produce', // produce or delivered
         quantity: '',
-        unit: 'pcs',
+        unit: 'linear',
         date: format(new Date(), 'yyyy-MM-dd'),
         note: ''
     });

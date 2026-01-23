@@ -85,24 +85,6 @@ function Navigation() {
                 Products
               </Link>
               <Link
-                to="/manage-products"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/manage-products')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                  }`}
-              >
-                Transactions
-              </Link>
-              <Link
-                to="/reports"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/reports')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                  }`}
-              >
-                Reports
-              </Link>
-              <Link
                 to="/input"
                 className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/input')
                   ? 'bg-primary-600 text-white'
@@ -119,6 +101,24 @@ function Navigation() {
                   }`}
               >
                 Delivery
+              </Link>
+              <Link
+                to="/manage-products"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/manage-products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Transactions
+              </Link>
+              <Link
+                to="/reports"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/reports')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Reports
               </Link>
               <Link
                 to="/parties"
@@ -198,26 +198,6 @@ function Navigation() {
                 Products
               </Link>
               <Link
-                to="/manage-products"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Transactions
-              </Link>
-              <Link
-                to="/reports"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Reports
-              </Link>
-              <Link
                 to="/input"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/input')
@@ -236,6 +216,26 @@ function Navigation() {
                   }`}
               >
                 Delivery
+              </Link>
+              <Link
+                to="/manage-products"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Transactions
+              </Link>
+              <Link
+                to="/reports"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Reports
               </Link>
               <Link
                 to="/parties"

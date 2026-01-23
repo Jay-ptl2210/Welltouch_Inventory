@@ -11,17 +11,21 @@ function ManageProducts() {
   const [transactions, setTransactions] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
+    partyId: '',
     productId: '',
     type: 'delivered',
     quantity: '',
-    unit: 'packet',
+    unit: 'linear',
     date: new Date().toISOString().split('T')[0],
     note: ''
   });
   const [filters, setFilters] = useState({
     name: '',
     size: '',
-    type: '',
+    type: '', // Transaction type (produce/delivered)
+    productType: '', // Product type (PPF TF, etc.)
+    party: '',
+    weight: '',
     startDate: '',
     endDate: ''
   });
@@ -63,10 +67,13 @@ function ManageProducts() {
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const newState = { ...prev, [name]: value };
+      if (name === 'partyId') {
+        newState.productId = ''; // Reset product when party changes
+      }
+      return newState;
+    });
   };
 
   const handleFilterChange = (e) => {
@@ -127,10 +134,17 @@ function ManageProducts() {
     }
   };
 
+  const openAddModal = (type) => {
+    resetForm();
+    setFormData(prev => ({ ...prev, type }));
+    setShowModal(true);
+  };
+
   const handleEdit = (transaction) => {
     setEditingTransaction(transaction);
     setFormData({
-      productId: transaction.product?._id || transaction.product,
+      partyId: transaction.party?._id || transaction.party || '',
+      productId: transaction.product?._id || transaction.product || '',
       type: transaction.type,
       quantity: transaction.quantity,
       unit: transaction.unit || 'pcs',
@@ -154,10 +168,11 @@ function ManageProducts() {
 
   const resetForm = () => {
     setFormData({
+      partyId: '',
       productId: '',
       type: 'delivered',
       quantity: '',
-      unit: 'packet',
+      unit: 'linear',
       date: new Date().toISOString().split('T')[0],
       note: ''
     });
@@ -168,11 +183,13 @@ function ManageProducts() {
 
   const filteredTransactions = transactions
     .filter(t => {
-      const p = t.product;
-      if (!p) return false;
-      if (filters.name && !p.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
-      if (filters.size && p.size !== filters.size) return false;
+      // Use denormalized fields for filtering to be resilient to missing product references
+      if (filters.name && !t.productName.toLowerCase().includes(filters.name.toLowerCase())) return false;
+      if (filters.party && (t.party?._id || t.party) !== filters.party) return false;
+      if (filters.size && t.size !== filters.size) return false;
+      if (filters.weight && String(t.product?.weight || '') !== filters.weight) return false;
       if (filters.type && t.type !== filters.type) return false;
+      if (filters.productType && (t.productType || 'PPF TF') !== filters.productType) return false;
       if (filters.startDate && new Date(t.date) < new Date(filters.startDate)) return false;
       if (filters.endDate && new Date(t.date) > new Date(filters.endDate)) return false;
       return true;
@@ -209,6 +226,16 @@ function ManageProducts() {
     }
   };
 
+  const getLinearValue = (t) => {
+    const p = products.find(prod => prod._id === (t.product?._id || t.product));
+    if (p && p.packetsPerLinear > 0 && p.pcsPerPacket > 0) {
+      return fromPcs(t.quantityInPcs, 'linear', p);
+    }
+    // Fallback: if we can't find product or factors, try to convert from its own unit if linear
+    if (t.unit === 'linear') return t.quantity;
+    return null; // Signals we should show the original unit if we can't calculate linear
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-[1600px]">
       {/* Header with Add Transaction Button */}
@@ -217,15 +244,6 @@ function ManageProducts() {
           <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
           <p className="text-gray-500 mt-1">Manage inventory movements</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center gap-2"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          Add Transaction
-        </button>
       </div>
 
       {/* Transaction Modal */}
@@ -234,7 +252,11 @@ function ManageProducts() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-8 md:p-10">
               <h2 className="text-3xl font-bold text-gray-900 mb-8">
-                {editingTransaction ? 'Edit Transaction' : 'Add Transaction'}
+                {editingTransaction
+                  ? 'Edit Transaction'
+                  : formData.type === 'produce'
+                    ? 'Add Production'
+                    : 'Add Delivery'}
               </h2>
 
 
@@ -246,6 +268,25 @@ function ManageProducts() {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Party Dropdown */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Party <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      name="partyId"
+                      required
+                      value={formData.partyId}
+                      onChange={handleFormChange}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 bg-white"
+                    >
+                      <option value="">Select a party</option>
+                      {parties.map(p => (
+                        <option key={p._id} value={p._id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Product Dropdown */}
                   <div className="md:col-span-2">
                     <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -256,14 +297,17 @@ function ManageProducts() {
                       required
                       value={formData.productId}
                       onChange={handleFormChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 bg-white"
+                      disabled={!formData.partyId}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                     >
-                      <option value="">Select a product</option>
-                      {products.map(p => (
-                        <option key={p._id} value={p._id}>
-                          {p.name} - {p.size} ({p.type}) - {p.weight}gm
-                        </option>
-                      ))}
+                      <option value="">{formData.partyId ? 'Select a product' : 'Select a party first'}</option>
+                      {products
+                        .filter(p => !formData.partyId || (p.party?._id || p.party) === formData.partyId)
+                        .map(p => (
+                          <option key={p._id} value={p._id}>
+                            {p.name} - {p.size} ({p.type}) - {p.weight}gm
+                          </option>
+                        ))}
                     </select>
                   </div>
 
@@ -323,18 +367,13 @@ function ManageProducts() {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Transaction Type <span className="text-red-500">*</span>
+                      Transaction Type
                     </label>
-                    <select
-                      name="type"
-                      required
-                      value={formData.type}
-                      onChange={handleFormChange}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700 bg-white"
-                    >
-                      <option value="produce">Produce (Add)</option>
-                      <option value="delivered">Delivered (Subtract)</option>
-                    </select>
+                    <div className={`px-4 py-3 rounded-xl font-bold border ${formData.type === 'produce' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'
+                      }`}>
+                      {formData.type === 'produce' ? 'Production (Add Stock)' : 'Delivery (Subtract Stock)'}
+                    </div>
+                    <input type="hidden" name="type" value={formData.type} />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -442,29 +481,77 @@ function ManageProducts() {
         {/* Filters */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6 mb-10">
           <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Party</label>
+            <select
+              name="party"
+              value={filters.party}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
+            >
+              <option value="">All</option>
+              {parties.map(p => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Product</label>
-            <input
-              type="text"
+            <select
               name="name"
               value={filters.name}
               onChange={handleFilterChange}
-              placeholder="Search..."
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
-            />
+            >
+              <option value="">All</option>
+              {[...new Set(products.map(p => p.name))].sort().map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Size</label>
-            <input
-              type="text"
+            <select
               name="size"
               value={filters.size}
               onChange={handleFilterChange}
-              placeholder="All"
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
-            />
+            >
+              <option value="">All</option>
+              {[...new Set(products.map(p => p.size))].filter(Boolean).sort().map(size => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Type</label>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Product Type</label>
+            <select
+              name="productType"
+              value={filters.productType}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
+            >
+              <option value="">All</option>
+              {[...new Set(products.map(p => p.type || 'PPF TF'))].sort().map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Weight</label>
+            <select
+              name="weight"
+              value={filters.weight}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
+            >
+              <option value="">All</option>
+              {[...new Set(products.map(p => p.weight))].filter(w => w !== undefined).sort((a, b) => a - b).map(w => (
+                <option key={w} value={w}>{w}gm</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tx Type</label>
             <select
               name="type"
               value={filters.type}
@@ -504,8 +591,10 @@ function ManageProducts() {
             <thead className="bg-gray-50/50">
               <tr>
                 <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Party</th>
                 <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Product</th>
-                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Size & Type</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Size</th>
+                <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Product Type</th>
                 <th className="px-8 py-5 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Weight</th>
                 <th className="px-8 py-5 text-center text-[11px] font-black text-gray-400 uppercase tracking-widest">Effect</th>
 
@@ -521,10 +610,16 @@ function ManageProducts() {
                     <div className="text-sm font-bold text-gray-900">{format(new Date(t.date), 'dd-MM-yyyy')}</div>
                   </td>
                   <td className="px-8 py-6 whitespace-nowrap">
-                    <div className="text-sm font-bold text-gray-800">{t.product?.name}</div>
+                    <div className="text-sm font-bold text-gray-800">{t.partyName || 'Generic'}</div>
                   </td>
                   <td className="px-8 py-6 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-500">{t.product?.size} ({t.product?.type || '-'})</div>
+                    <div className="text-sm font-bold text-gray-800">{t.productName}</div>
+                  </td>
+                  <td className="px-8 py-6 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-500">{t.size}</div>
+                  </td>
+                  <td className="px-8 py-6 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-500">{t.productType || '-'}</div>
                   </td>
                   <td className="px-8 py-6 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-400">{t.product?.weight || 0}gm</div>
@@ -537,9 +632,14 @@ function ManageProducts() {
                   </td>
                   <td className="px-8 py-6 whitespace-nowrap">
                     <div className={`text-sm font-extrabold ${t.type === 'produce' ? 'text-green-700' : 'text-red-700'}`}>
-                      {t.type === 'produce' ? '+' : '-'}{t.quantity.toFixed(1)} <span className="text-[10px] opacity-60 uppercase">{t.unit || 'pcs'}</span>
+                      {(() => {
+                        const linear = getLinearValue(t);
+                        if (linear !== null) {
+                          return `${t.type === 'produce' ? '+' : '-'}${linear.toFixed(1)} LINEAR`;
+                        }
+                        return `${t.type === 'produce' ? '+' : '-'}${t.quantity.toFixed(1)} ${t.unit || 'pcs'}`;
+                      })()}
                     </div>
-
                   </td>
                   <td className="px-8 py-6">
                     <div className="text-xs text-gray-400 line-clamp-1 max-w-[150px]">{t.note || '-'}</div>

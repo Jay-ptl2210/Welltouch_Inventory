@@ -65,7 +65,7 @@ function AddProduct() {
       setFormData({
         name: '',
         size: '',
-        type: 'PPF TF',
+        type: '',
         packetsPerLinear: '',
         pcsPerPacket: '',
         quantity: '',

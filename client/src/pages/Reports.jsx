@@ -16,7 +16,9 @@ function Reports() {
         name: '',
         size: '',
         type: '',
-        party: ''
+        party: '',
+        weight: '',
+        transactionType: '' // produce or delivered
     });
     const [parties, setParties] = useState([]);
     const [reportData, setReportData] = useState([]);
@@ -69,6 +71,7 @@ function Reports() {
                 if (filters.size && p.size !== filters.size) return false;
                 if (filters.type && p.type !== filters.type) return false;
                 if (filters.party && (p.party?._id || p.party) !== filters.party) return false;
+                if (filters.weight && String(p.weight) !== filters.weight) return false;
                 return true;
             })
             .map(product => {
@@ -87,8 +90,14 @@ function Reports() {
 
                 const initialPcs = (Number(product.previousStock) || 0) + calculatePcs(beforeRange);
 
-                const producedPcs = inRange.filter(t => t.type === 'produce').reduce((acc, t) => acc + (Number(t.quantityInPcs) || 0), 0);
-                const deliveredPcs = inRange.filter(t => t.type === 'delivered').reduce((acc, t) => acc + (Number(t.quantityInPcs) || 0), 0);
+                const producedPcs = inRange
+                    .filter(t => t.type === 'produce' && (!filters.transactionType || filters.transactionType === 'produce'))
+                    .reduce((acc, t) => acc + (Number(t.quantityInPcs) || 0), 0);
+
+                const deliveredPcs = inRange
+                    .filter(t => t.type === 'delivered' && (!filters.transactionType || filters.transactionType === 'delivered'))
+                    .reduce((acc, t) => acc + (Number(t.quantityInPcs) || 0), 0);
+
                 const remainingPcs = initialPcs + producedPcs - deliveredPcs;
 
 
@@ -175,6 +184,7 @@ function Reports() {
 
         const tableData = reportData.map(item => [
             item.product.name,
+            item.product.type || 'N/A',
             item.product.size,
             (item.product.weight || 0) + 'gm',
             item.product.party?.name || 'N/A',
@@ -198,7 +208,7 @@ function Reports() {
 
         // Create totals row
         const totalsRow = [
-            { content: 'TOTAL', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+            { content: 'TOTAL', colSpan: 5, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
             // Opening
             totals.initial.linear.toFixed(1),
             totals.initial.packets.toFixed(1),
@@ -226,14 +236,14 @@ function Reports() {
             startY: 40,
             head: [
                 [
-                    { content: 'Product Info', colSpan: 4, styles: { halign: 'center', fillColor: [51, 51, 51] } },
+                    { content: 'Product Info', colSpan: 5, styles: { halign: 'center', fillColor: [51, 51, 51] } },
                     { content: 'Opening Stock', colSpan: 3, styles: { halign: 'center', fillColor: [63, 81, 181] } },
                     { content: 'Produced (+)', colSpan: 3, styles: { halign: 'center', fillColor: [76, 175, 80] } },
                     { content: 'Delivered (-)', colSpan: 3, styles: { halign: 'center', fillColor: [211, 63, 51] } },
                     { content: 'Closing Stock', colSpan: 3, styles: { halign: 'center', fillColor: [33, 150, 243] } }
                 ],
                 [
-                    'Product', 'Size', 'Weight', 'Party',
+                    'Product', 'Type', 'Size', 'Weight', 'Party',
                     'Lin', 'Pkt', 'Pcs',
                     'Lin', 'Pkt', 'Pcs',
                     'Lin', 'Pkt', 'Pcs',
@@ -255,15 +265,15 @@ function Reports() {
             },
             columnStyles: {
                 0: { fontStyle: 'bold', cellWidth: 'auto' },
-                4: { fillColor: [248, 250, 252] },
                 5: { fillColor: [248, 250, 252] },
                 6: { fillColor: [248, 250, 252] },
-                10: { fillColor: [248, 250, 252] },
+                7: { fillColor: [248, 250, 252] },
                 11: { fillColor: [248, 250, 252] },
-                12: { fillColor: [248, 250, 252] }
+                12: { fillColor: [248, 250, 252] },
+                13: { fillColor: [248, 250, 252] }
             },
             didParseCell: function (data) {
-                if (data.section === 'body' && (data.column.index >= 4)) {
+                if (data.section === 'body' && (data.column.index >= 5)) {
                     data.cell.styles.halign = 'center';
                 }
             }
@@ -298,11 +308,23 @@ function Reports() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 mb-10 p-4 px-6">
                 <div className="flex flex-wrap items-center gap-6">
                     <div className="flex-1 min-w-[150px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Party</label>
+                        <div className="relative">
+                            <select name="party" value={filters.party} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
+                                <option value="">All Parties</option>
+                                {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                            </select>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex-1 min-w-[150px]">
                         <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Product</label>
                         <div className="relative">
                             <select name="name" value={filters.name} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
                                 <option value="">All Products</option>
-                                {[...new Set(products.map(p => p.name))].map(n => <option key={n} value={n}>{n}</option>)}
+                                {[...new Set(products.map(p => p.name))].sort().map(n => <option key={n} value={n}>{n}</option>)}
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -314,7 +336,7 @@ function Reports() {
                         <div className="relative">
                             <select name="size" value={filters.size} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
                                 <option value="">All Sizes</option>
-                                {uniqueSizes.map(s => <option key={s} value={s}>{s}</option>)}
+                                {[...new Set(products.map(p => p.size))].filter(Boolean).sort().map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -333,12 +355,27 @@ function Reports() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex-1 min-w-[150px]">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Party</label>
+                    <div className="flex-1 min-w-[120px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Weight</label>
                         <div className="relative">
-                            <select name="party" value={filters.party} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
-                                <option value="">All Parties</option>
-                                {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                            <select name="weight" value={filters.weight} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
+                                <option value="">All Weights</option>
+                                {[...new Set(products.map(p => p.weight))].filter(w => w !== undefined).sort((a, b) => a - b).map(w => (
+                                    <option key={w} value={w}>{w}gm</option>
+                                ))}
+                            </select>
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
+                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="flex-1 min-w-[120px]">
+                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Tx Type</label>
+                        <div className="relative">
+                            <select name="transactionType" value={filters.transactionType} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
+                                <option value="">All Types</option>
+                                <option value="produce">Produced</option>
+                                <option value="delivered">Delivered</option>
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -458,6 +495,25 @@ function Reports() {
                             </div>
 
                             <div className="p-6 pt-5 space-y-6">
+                                {/* OPENING SECTION */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-blue-600 uppercase tracking-wider">Opening Stock</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-blue-50/40 p-3 rounded-lg text-center border border-blue-100/30">
+                                            <div className="text-lg font-black text-blue-700 leading-none">{item.initial.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-blue-600/60 uppercase tracking-tighter mt-1.5">Linear</div>
+                                        </div>
+                                        <div className="bg-blue-50/40 p-3 rounded-lg text-center border border-blue-100/30">
+                                            <div className="text-lg font-black text-blue-700 leading-none">{item.initial.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-blue-600/60 uppercase tracking-tighter mt-1.5">Packets</div>
+                                        </div>
+                                        <div className="bg-blue-50/40 p-3 rounded-lg text-center border border-blue-100/30">
+                                            <div className="text-lg font-black text-blue-700 leading-none">{item.initial.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-blue-600/60 uppercase tracking-tighter mt-1.5">Pcs</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* PRODUCED SECTION */}
                                 <div className="space-y-2">
                                     <h4 className="flex items-center gap-2 text-[11px] font-black text-green-600 uppercase tracking-wider before:content-['+']">Produced</h4>

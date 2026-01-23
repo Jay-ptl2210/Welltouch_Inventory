@@ -210,15 +210,32 @@ function Products() {
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Search Product</label>
-            <input
-              type="text"
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Party</label>
+            <select
+              name="party"
+              value={filters.party}
+              onChange={handleFilterChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
+            >
+              <option value="">All Parties</option>
+              {parties.map(party => (
+                <option key={party._id} value={party._id}>{party.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Name</label>
+            <select
               name="name"
               value={filters.name}
               onChange={handleFilterChange}
-              placeholder="Search by name..."
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all"
-            />
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
+            >
+              <option value="">All Products</option>
+              {[...new Set(products.map(p => p.name))].sort().map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
           </div>
           <div className="form-group">
             <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Size</label>
@@ -226,7 +243,7 @@ function Products() {
               name="size"
               value={filters.size}
               onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Sizes</option>
               {uniqueSizes.map(size => (
@@ -240,7 +257,7 @@ function Products() {
               name="type"
               value={filters.type}
               onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Types</option>
               {uniqueTypes.map(type => (
@@ -254,25 +271,11 @@ function Products() {
               name="weight"
               value={filters.weight}
               onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Weights</option>
               {uniqueWeights.map(w => (
                 <option key={w} value={w}>{w}gm</option>
-              ))}
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Party</label>
-            <select
-              name="party"
-              value={filters.party}
-              onChange={handleFilterChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white"
-            >
-              <option value="">All Parties</option>
-              {parties.map(party => (
-                <option key={party._id} value={party._id}>{party.name}</option>
               ))}
             </select>
           </div>
