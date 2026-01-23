@@ -452,7 +452,22 @@ function Home() {
                               </td>
                               <td className="px-6 py-4">
                                 <div className={`text-sm font-black ${t.type === 'produce' ? 'text-green-600' : 'text-red-600'}`}>
-                                  {t.type === 'produce' ? '+' : '-'}{t.quantity} <span className="text-[10px] opacity-60 uppercase">{t.unit || 'pcs'}</span>
+                                  {(() => {
+                                    // Calculate linear based on unit
+                                    let val = Number(t.quantity);
+                                    // Factors from selectedProduct
+                                    const ppL = Number(selectedProduct.packetsPerLinear) || 0;
+                                    const ppP = Number(selectedProduct.pcsPerPacket) || 0;
+
+                                    if (ppL > 0 && ppP > 0) {
+                                      if (t.unit === 'packet') val = val / ppL;
+                                      else if (t.unit === 'pcs') val = val / (ppL * ppP);
+                                      // if linear, val is already correct
+                                      return `${t.type === 'produce' ? '+' : '-'}${val.toFixed(1)} LINEAR`;
+                                    }
+                                    // Fallback if no factors
+                                    return `${t.type === 'produce' ? '+' : '-'}${t.quantity} ${t.unit?.toUpperCase() || 'PCS'}`;
+                                  })()}
                                 </div>
                               </td>
                               <td className="px-6 py-4">

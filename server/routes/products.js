@@ -29,7 +29,7 @@ router.get('/', protect, async (req, res) => {
   try {
     const products = await Product.find({ user: req.user._id })
       .populate('party', 'name')
-      .sort({ createdAt: -1 });
+      .sort({ quantity: -1, createdAt: -1 });
     res.json(products);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch products' });

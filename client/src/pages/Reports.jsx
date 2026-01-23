@@ -165,8 +165,8 @@ function Reports() {
         // Add Logo - Repositioned to Right Side
         try {
             const pageWidth = doc.internal.pageSize.getWidth();
-            const logoWidth = 40;
-            doc.addImage(logo, 'PNG', pageWidth - logoWidth - 14, 10, logoWidth, 12);
+            const logoWidth = 60; // Increased size
+            doc.addImage(logo, 'PNG', pageWidth - logoWidth - 14, 5, logoWidth, 20);
         } catch (e) {
             console.error('Error adding logo to PDF:', e);
         }

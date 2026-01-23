@@ -57,6 +57,8 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/parties', require('./routes/parties'));
 app.use('/api/transactions', require('./routes/transactions'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/challans', require('./routes/challans'));
+app.use('/api/customers', require('./routes/customers'));
 
 // Health check
 app.get('/api/health', (req, res) => {

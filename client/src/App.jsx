@@ -14,6 +14,8 @@ import ManageParties from './pages/ManageParties';
 import AddParty from './pages/AddParty';
 import Input from './pages/Input';
 import Output from './pages/Output';
+import Challan from './pages/Challan';
+import ManageCustomers from './pages/ManageCustomers';
 
 import logo from './assets/logo.png';
 
@@ -56,7 +58,7 @@ function Navigation() {
 
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex-shrink-0 flex items-center">
             <Link to="/" className="flex items-center">
@@ -103,6 +105,15 @@ function Navigation() {
                 Delivery
               </Link>
               <Link
+                to="/challan"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/challan')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Challan
+              </Link>
+              <Link
                 to="/manage-products"
                 className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/manage-products')
                   ? 'bg-primary-600 text-white'
@@ -128,6 +139,15 @@ function Navigation() {
                   }`}
               >
                 Parties
+              </Link>
+              <Link
+                to="/customers"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/customers')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Customers
               </Link>
 
               <div className="relative ml-3" ref={userMenuRef}>
@@ -218,6 +238,16 @@ function Navigation() {
                 Delivery
               </Link>
               <Link
+                to="/challan"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/challan')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Challan
+              </Link>
+              <Link
                 to="/manage-products"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
@@ -246,6 +276,16 @@ function Navigation() {
                   }`}
               >
                 Parties
+              </Link>
+              <Link
+                to="/customers"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/customers')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Customers
               </Link>
               <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
                 {user?.email}
@@ -276,7 +316,7 @@ function AppContent() {
     >
       <div className="min-h-screen flex flex-col">
         <Navigation />
-        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-4 overflow-x-hidden flex-grow w-full">
+        <main className="w-full mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-4 overflow-x-hidden flex-grow">
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -353,6 +393,22 @@ function AppContent() {
               }
             />
             <Route
+              path="/challan"
+              element={
+                <ProtectedRoute>
+                  <Challan />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers"
+              element={
+                <ProtectedRoute>
+                  <ManageCustomers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/add-party"
               element={
                 <ProtectedRoute>
@@ -366,7 +422,7 @@ function AppContent() {
         {/* Footer */}
         {isAuthenticated && (
           <footer className="bg-white border-t border-gray-200 mt-auto py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-gray-500 text-sm">
                 &copy; {new Date().getFullYear()} Welltouch Inventory. All rights reserved.
               </p>

@@ -95,4 +95,14 @@ export const getParties = () => api.get('/parties');
 export const addParty = (party) => api.post('/parties', party);
 export const deleteParty = (id) => api.delete(`/parties/${id}`);
 
+// Challans API
+export const getChallans = () => api.get('/challans');
+export const saveChallan = (challan) => api.post('/challans', challan);
+export const deleteChallan = (id) => api.delete(`/challans/${id}`);
+
+// Customers API
+export const getCustomers = () => api.get('/customers');
+export const addCustomer = (customer) => api.post('/customers', customer);
+export const deleteCustomer = (id) => api.delete(`/customers/${id}`);
+
 export default api;

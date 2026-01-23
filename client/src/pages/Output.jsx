@@ -207,7 +207,7 @@ function Output() {
                                 .filter(p => !formData.partyId || (p.party?._id || p.party) === formData.partyId)
                                 .map(p => (
                                     <option key={p._id} value={p._id}>
-                                        {p.name} - {p.size} ({p.type}) - {p.weight}gm
+                                        {p.name} - {p.size} ({p.type}) - {p.weight}gm | {p.packetsPerLinear} Pkt/Lin, {p.pcsPerPacket} Pcs/Pkt
                                     </option>
                                 ))}
                         </select>
