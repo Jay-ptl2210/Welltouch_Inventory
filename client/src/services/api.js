@@ -93,6 +93,7 @@ export const getDashboard = () => api.get('/dashboard');
 // Parties API
 export const getParties = () => api.get('/parties');
 export const addParty = (party) => api.post('/parties', party);
+export const updateParty = (id, party) => api.put(`/parties/${id}`, party);
 export const deleteParty = (id) => api.delete(`/parties/${id}`);
 
 // Challans API
@@ -104,6 +105,7 @@ export const deleteChallan = (id) => api.delete(`/challans/${id}`);
 // Customers API
 export const getCustomers = () => api.get('/customers');
 export const addCustomer = (customer) => api.post('/customers', customer);
+export const updateCustomer = (id, customer) => api.put(`/customers/${id}`, customer);
 export const deleteCustomer = (id) => api.delete(`/customers/${id}`);
 
 export default api;

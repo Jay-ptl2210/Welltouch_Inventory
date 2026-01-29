@@ -25,6 +25,9 @@ function Challan() {
         shipAddress: '',
         transport: '',
         vehicleNumber: '',
+        dispatchThrough: '',
+        termsOfDelivery: '',
+        notes: '',
         date: new Date().toISOString().split('T')[0]
     });
 
@@ -53,7 +56,12 @@ function Challan() {
             ]);
             setProducts(productsRes.data);
             setParties(partiesRes.data);
-            setCustomers(customersRes.data.data || customersRes.data);
+
+            // Include parties with isBoth=true in customers list
+            const customersData = customersRes.data.data || customersRes.data;
+            const bothParties = (partiesRes.data || []).filter(p => p.isBoth);
+            setCustomers([...customersData, ...bothParties]);
+
             setChallans(challansRes.data.data || challansRes.data);
         } catch (err) {
             console.error('Error loading data:', err);
@@ -151,100 +159,148 @@ function Challan() {
     const generatePDF = (savedItems, header) => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
         const leftX = 14;
         const rightEdge = pageWidth - 14;
 
-        // 0. TOP LEFT LOGO (Big Size)
+        // ===== HEADER SECTION =====
+        // 1. Logo (Left side) - Sized for a professional look
         try {
-            doc.addImage(logo, 'PNG', 14, 10, 80, 28);
+            doc.addImage(logo, 'PNG', 15, 12, 45, 38);
         } catch (e) {
             console.error('Logo error:', e);
         }
 
-        // 1. HEADER TITLE (Right Aligned to clear Logo)
+        // 2. Title (Center) - Vertically aligned
         doc.setFont('times', 'bold');
-        doc.setFontSize(30); // Reduced slightly to fit
-        doc.setTextColor(30, 41, 59);
-        doc.text('DELIVERY CHALLAN', rightEdge, 28, { align: 'right' });
+        doc.setFontSize(22);
+        doc.setTextColor(0, 0, 0);
+        doc.text('DELIVERY', pageWidth / 2, 28, { align: 'center' });
+        doc.text('CHALLAN', pageWidth / 2, 38, { align: 'center' });
 
-        // 2. DETAILS SECTION (Two Column Layout)
-        let infoY = 55; // Start well below logo
+        // 3. Company Details (Right side - Block Left Aligned)
+        const companyX = pageWidth - 68;
+        let companyY = 18;
 
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14); // Company Name bigger
-        doc.setTextColor(30, 41, 59); // Darker Slate
-        doc.text('Welltouch Hygiene Pvt. Ltd.', leftX, infoY);
-
-        doc.setFontSize(11); // Address info bold but slightly smaller
-        doc.setTextColor(71, 85, 105);
-        doc.text('Block no 963, Kim mandavi road,', leftX, infoY + 6);
-        doc.text('Tadkeshwar, Surat - Gujarat 394170', leftX, infoY + 11);
-        doc.text('Ph no: 8141100123', leftX, infoY + 16);
-        doc.text('GSTIN: 24AADCW4754B1ZK', leftX, infoY + 21);
-
-
-        // 4. RIGHT SIDE: Bill To Customer Details
-        const billToY = infoY; // Align with Company Details
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(10);
-        doc.setTextColor(30, 41, 59);
-        doc.text('BILL TO:', rightEdge, billToY, { align: 'right' });
-
-        const currentCustName = customers.find(p => p._id === (header.customer?._id || header.customer || header.customerId))?.name || 'N/A';
-        doc.setFontSize(14);
-        doc.text(currentCustName.toUpperCase(), rightEdge, billToY + 8, { align: 'right' });
+        doc.setFontSize(12);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Welltouch Hygiene Pvt. Ltd.', companyX, companyY);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(71, 85, 105);
-        const billToAddrLines = doc.splitTextToSize(header.address || 'N/A', 90);
-        doc.text(billToAddrLines, rightEdge, billToY + 14, { align: 'right' });
+        doc.setFontSize(10);
 
-        // SHIP TO (Below Bill To)
-        const shipToY = billToY + 28;
+        const lineHeight = 5;
+        companyY += 6;
+        doc.text('Block no 963, Kim Mandavi Road,', companyX, companyY);
+        companyY += lineHeight;
+        doc.text('Tadkeshwar, Surat - Gujarat 394170', companyX, companyY);
+        companyY += lineHeight;
+        doc.text('Ph: 8141100123', companyX, companyY);
+        companyY += lineHeight;
+        doc.text('GSTIN: 24AADCW4754B1ZK', companyX, companyY);
+        companyY += lineHeight;
+        doc.text('www.welltouchhygiene.com', companyX, companyY);
+        companyY += lineHeight;
+        doc.text('welltouchhygiene@gmail.com', companyX, companyY);
+
+        // Horizontal line - Positioned closer to header content
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.8);
+        doc.line(leftX, 56, rightEdge, 56);
+
+        // ===== INFO SECTION (Unified) =====
+        let infoY = 64;
+        const col2X = pageWidth / 2 + 10; // Start of right column (~115mm)
+
+        // Helper to get full info from customer ID
+        const getCustInfo = (id, overrideName, overrideAddr) => {
+            const c = customers.find(cust => cust._id === id);
+            return {
+                name: (overrideName || c?.name || 'N/A').toUpperCase(),
+                address: overrideAddr || c?.address || 'N/A',
+                gst: c?.gst || 'N/A',
+                phone: c?.phone || 'N/A'
+            };
+        };
+
+        const billInfo = getCustInfo(header.customer?._id || header.customer || header.customerId);
+        let leftY = infoY;
+
+        // --- LEFT COLUMN: Challan & Transport ---
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.setTextColor(30, 41, 59);
-        doc.text('SHIP TO:', rightEdge, shipToY, { align: 'right' });
+        doc.setTextColor(0, 0, 0);
 
-        doc.setFontSize(12);
-        const shipName = header.shipName || currentCustName;
-        doc.text(shipName.toUpperCase(), rightEdge, shipToY + 6, { align: 'right' });
+        // 1. Challan & Date
+        doc.text(`Challan no# ${header.challanNumber || 'N/A'}`, leftX, leftY);
+        leftY += 5;
+        doc.text(`Date: ${format(new Date(header.date), 'dd-MM-yyyy')}`, leftX, leftY);
+        leftY += 5;
+        doc.text(`Dispatch Through: ${header.dispatchThrough || 'By Road'}`, leftX, leftY);
+
+        // 2. Transport
+        leftY += 8;
+        doc.text('Transport Detail:', leftX, leftY);
+        doc.setFont('helvetica', 'normal');
+        leftY += 5;
+        doc.text(`Name: ${header.transport || ''}`, leftX, leftY);
+        leftY += 5;
+        doc.text(`Vehicle Number: ${header.vehicleNumber || 'N/A'}`, leftX, leftY);
+
+        // 3. Terms
+        leftY += 8;
+        doc.setFont('helvetica', 'bold');
+        doc.text('Terms of Payment :', leftX, leftY);
+        doc.setFont('helvetica', 'normal');
+        doc.text(header.termsOfDelivery || 'N/A', leftX + 35, leftY);
+        const leftBottomY = leftY;
+
+        // --- RIGHT COLUMN: BILL TO & SHIP TO (Small Font) ---
+        let rightY = infoY;
+        const shipInfo = getCustInfo(header.customer?._id || header.customer || header.customerId, header.shipName, header.shipAddress);
+
+        const custColX = companyX; // Vertically align with Company Details
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+
+        // BILL TO
+        doc.text('BILL TO:', custColX, rightY);
+        rightY += 4;
+        doc.text(billInfo.name, custColX, rightY);
 
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(71, 85, 105);
-        const shipAddrLines = doc.splitTextToSize(header.shipAddress || header.address || 'N/A', 90);
-        doc.text(shipAddrLines, rightEdge, shipToY + 11, { align: 'right' });
+        doc.setFontSize(8.5);
+        const billAddrLines = doc.splitTextToSize(billInfo.address, 54);
+        rightY += 4;
+        doc.text(billAddrLines, custColX, rightY);
+        rightY += (billAddrLines.length * 4);
 
-        // Divider (Moved down to accommodate Ship To Address)
-        doc.setDrawColor(226, 232, 240); // Slate 200
-        doc.setLineWidth(0.5);
-        doc.line(14, 100, pageWidth - 14, 100);
+        doc.text(`Ph: ${billInfo.phone} | GST: ${billInfo.gst}`, custColX, rightY);
 
-        // 3. INFORMATION ROW (LR Split) - Moved down
-        const infoRowY = 110;
-        // LEFT: Challan Info
+        // SHIP TO
+        rightY += 8;
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14); // Bigger
-        doc.setTextColor(15, 23, 42); // Slate 900
-        doc.text(`Challan No# ${header.challanNumber || 'N/A'}`, leftX, infoRowY);
+        doc.setFontSize(9);
+        doc.text('SHIP TO:', custColX, rightY);
+        rightY += 4;
+        doc.text(shipInfo.name, custColX, rightY);
 
-        doc.setFontSize(12); // Bigger date
-        doc.text(`Date: ${format(new Date(header.date), 'dd-MM-yyyy')}`, leftX, infoRowY + 8);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const shipAddrLines = doc.splitTextToSize(shipInfo.address, 54);
+        rightY += 4;
+        doc.text(shipAddrLines, custColX, rightY);
+        rightY += (shipAddrLines.length * 4);
 
-        // RIGHT: Transport Details
-        doc.setFontSize(14);
-        doc.text('TRANSPORT:', rightEdge, infoRowY, { align: 'right' });
+        doc.text(`Ph: ${shipInfo.phone} | GST: ${shipInfo.gst}`, custColX, rightY);
+        const rightBottomY = rightY;
 
-        doc.setFontSize(12);
-        doc.text(`Name: ${header.transport || 'N/A'}`, rightEdge, infoRowY + 8, { align: 'right' });
-        doc.text(`Vehicle No: ${header.vehicleNumber || 'N/A'}`, rightEdge, infoRowY + 16, { align: 'right' });
 
-        // adjust startY for table
-        const tableStartY = 145; // Increased from 135
-
-        // Items Table
+        // ===== ITEMS TABLE =====
+        // Make start position dynamic based on content above
+        const tableStartY = Math.max(leftBottomY, rightBottomY) + 12;
         let totalLin = 0, totalPkt = 0, totalPcs = 0;
 
         const tableData = savedItems.map((item, index) => {
@@ -256,7 +312,7 @@ function Challan() {
             const pkPerLin = item.packetsPerLinear || p?.packetsPerLinear || 0;
             const pcsPerPk = item.pcsPerPacket || p?.pcsPerPacket || 0;
 
-            const conversionInfo = pkPerLin > 0 ? `\n[${pkPerLin} Pkt/Lin, ${pcsPerPk} Pcs/Pkt]` : '';
+            const conversionInfo = pkPerLin > 0 ? `\n${pkPerLin} Pcs/Pkt, ${pcsPerPk} Pkt/Lin` : '';
 
             const pcs = item.quantityInPcs || (p ? toPcs(item.quantity, item.unit, p) : 0);
             const lin = item.unit === 'linear' ? item.quantity : (pkPerLin > 0 && pcsPerPk > 0 ? (pcs / (pkPerLin * pcsPerPk)) : 0);
@@ -289,27 +345,52 @@ function Challan() {
             head: [['Sr.', 'Product Name', 'Type', 'Linear', 'Packets', 'Pieces']],
             body: tableData,
             theme: 'grid',
-            headStyles: { fillColor: [0, 0, 0], textColor: 255, halign: 'center', font: 'helvetica', fontStyle: 'bold', fontSize: 11 }, // Black head, bigger font
-            styles: { fontSize: 10, cellPadding: 4, font: 'helvetica', textColor: [0, 0, 0] }, // Dark text, bigger font
+            headStyles: { fillColor: [0, 150, 136], textColor: 255, halign: 'center', font: 'helvetica', fontStyle: 'bold', fontSize: 10 },
+            styles: { fontSize: 9, cellPadding: 3, font: 'helvetica', textColor: [0, 0, 0] },
             columnStyles: {
-                0: { cellWidth: 12 },
+                0: { cellWidth: 12, halign: 'center' },
                 1: { cellWidth: 'auto' },
-                3: { halign: 'right', cellWidth: 28 },
-                4: { halign: 'right', cellWidth: 28 },
-                5: { halign: 'right', cellWidth: 28 }
+                2: { cellWidth: 25, halign: 'center' },
+                3: { halign: 'right', cellWidth: 25 },
+                4: { halign: 'right', cellWidth: 25 },
+                5: { halign: 'right', cellWidth: 25 }
             }
         });
 
-        // Signatures (Fixed at Bottom)
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const footerY = pageHeight - 30;
+        let finalY = doc.lastAutoTable.finalY || tableStartY + 20;
 
+        // Notes Section
+        if (header.notes) {
+            finalY += 10;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Notes: ', leftX, finalY);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            const notesText = header.notes;
+            doc.text(notesText, leftX + 13, finalY);
+        }
+
+        // ===== FOOTER SECTION =====
+        const footerY = pageHeight - 25;
+
+        // Jurisdiction Notice - Bottom Left
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.text('* Subject to Surat Jurisdiction', leftX, pageHeight - 12);
+
+        // Signatures
         doc.setFontSize(10);
         doc.setFont('helvetica', 'bold');
-        doc.text('Receiver\'s Signature', 14, footerY);
-        doc.text('Authorized Signature', pageWidth - 14, footerY, { align: 'right' });
+        doc.text("Receiver's Signature", leftX, footerY);
 
-        // Save with sequence number as filename
+        // Authorized Sign Block
+        doc.setFont('helvetica', 'bold');
+        doc.text('Authorized Signature', rightEdge, footerY - 2, { align: 'right' });
+        doc.text('For Welltouch Hygiene Pvt. Ltd.', rightEdge, footerY + 3, { align: 'right' });
+
+        // Save PDF
         const fileName = `${header.challanNumber || 'CH-New'}.pdf`;
         doc.save(fileName);
     };
@@ -333,6 +414,9 @@ function Challan() {
             shipAddress: challan.shipAddress || '',
             transport: challan.transport || '',
             vehicleNumber: challan.vehicleNumber || '',
+            dispatchThrough: challan.dispatchThrough || '',
+            termsOfDelivery: challan.termsOfDelivery || '',
+            notes: challan.notes || '',
             date: new Date(challan.date).toISOString().split('T')[0]
         });
 
@@ -358,6 +442,9 @@ function Challan() {
             shipAddress: '',
             transport: '',
             vehicleNumber: '',
+            dispatchThrough: '',
+            termsOfDelivery: '',
+            notes: '',
             date: new Date().toISOString().split('T')[0]
         });
         setItems([]);
@@ -434,6 +521,9 @@ function Challan() {
                     shipAddress: headerData.shipAddress,
                     transport: headerData.transport,
                     vehicleNumber: headerData.vehicleNumber,
+                    dispatchThrough: headerData.dispatchThrough,
+                    termsOfDelivery: headerData.termsOfDelivery,
+                    notes: headerData.notes,
                     date: headerData.date,
                     items: challanItems,
                     totalLinear: totalLin,
@@ -451,6 +541,9 @@ function Challan() {
                     shipAddress: headerData.shipAddress,
                     transport: headerData.transport,
                     vehicleNumber: headerData.vehicleNumber,
+                    dispatchThrough: headerData.dispatchThrough,
+                    termsOfDelivery: headerData.termsOfDelivery,
+                    notes: headerData.notes,
                     date: headerData.date,
                     items: challanItems,
                     totalLinear: totalLin,
@@ -518,7 +611,7 @@ function Challan() {
                     {/* Customer Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 bg-slate-50/50 p-8 rounded-3xl border border-slate-100">
                         <div className="md:col-span-2 lg:col-span-1">
-                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Customer Name</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Bill To (Customer)</label>
                             <select
                                 name="customerId"
                                 required
@@ -563,8 +656,48 @@ function Challan() {
                                 placeholder="GJ-XX-XXXX"
                             />
                         </div>
+                        <div>
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Dispatch Through</label>
+                            <input
+                                type="text"
+                                name="dispatchThrough"
+                                value={headerData.dispatchThrough || ''}
+                                onChange={handleHeaderChange}
+                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                placeholder="By Road"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Terms of Delivery</label>
+                            <input
+                                type="text"
+                                name="termsOfDelivery"
+                                value={headerData.termsOfDelivery || ''}
+                                onChange={handleHeaderChange}
+                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                placeholder="Ex: FOB, CIF, etc."
+                            />
+                        </div>
+                        <div className="md:col-span-2 lg:col-span-3">
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Notes</label>
+                            <textarea
+                                name="notes"
+                                value={headerData.notes || ''}
+                                onChange={handleHeaderChange}
+                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all h-24"
+                                placeholder="Any additional notes..."
+                            />
+                        </div>
                         <div className="md:col-span-2">
-                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Billing Address</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">
+                                Billing Address
+                                <span className="text-[10px] text-primary-500 ml-2 font-bold cursor-pointer hover:underline" onClick={() => {
+                                    const c = customers.find(x => x._id === headerData.customerId);
+                                    if (c && c.gst) alert(`GSTIN: ${c.gst}`);
+                                }}>
+                                    {customers.find(x => x._id === headerData.customerId)?.gst ? `(GST: ${customers.find(x => x._id === headerData.customerId).gst})` : ''}
+                                </span>
+                            </label>
                             <input
                                 type="text"
                                 name="address"
@@ -575,15 +708,24 @@ function Challan() {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Ship Name</label>
-                            <input
-                                type="text"
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Ship To (Name)</label>
+                            <select
                                 name="shipName"
                                 value={headerData.shipName}
-                                onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
-                                placeholder="Consignee Name"
-                            />
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    const selectedCust = customers.find(c => c.name === val);
+                                    setHeaderData(prev => ({
+                                        ...prev,
+                                        shipName: val,
+                                        shipAddress: selectedCust ? (selectedCust.address || '') : prev.shipAddress
+                                    }));
+                                }}
+                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">Same as Bill To</option>
+                                {customers.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+                            </select>
                         </div>
                         <div className="md:col-span-2">
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Shipping Address</label>
@@ -638,6 +780,19 @@ function Challan() {
                                 </select>
                             </div>
                             <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Unit</label>
+                                <select
+                                    name="unit"
+                                    value={currentItem.unit}
+                                    onChange={handleCurrentItemChange}
+                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
+                                >
+                                    <option value="packet">Packets</option>
+                                    <option value="linear">Linear</option>
+                                    <option value="pcs">Pieces</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
                                     Quantity <span className="text-[9px] lowercase font-bold text-primary-500">(Stock: {calculateAvailable()})</span>
                                 </label>
@@ -650,19 +805,6 @@ function Challan() {
                                     placeholder="Amount"
                                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Unit</label>
-                                <select
-                                    name="unit"
-                                    value={currentItem.unit}
-                                    onChange={handleCurrentItemChange}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
-                                >
-                                    <option value="packet">Packets</option>
-                                    <option value="linear">Linear</option>
-                                    <option value="pcs">Pieces</option>
-                                </select>
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Date</label>

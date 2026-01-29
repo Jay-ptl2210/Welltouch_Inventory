@@ -199,21 +199,6 @@ function Input() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Quantity</label>
-                        <input
-                            type="number"
-                            name="quantity"
-                            required
-                            step="0.01"
-                            min="0"
-                            value={formData.quantity}
-                            onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700"
-                            placeholder="Amount"
-                        />
-                    </div>
-
-                    <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Unit</label>
                         <select
                             name="unit"
@@ -226,6 +211,21 @@ function Input() {
                             <option value="linear">Linear</option>
                             <option value="pcs">Pieces</option>
                         </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Quantity</label>
+                        <input
+                            type="number"
+                            name="quantity"
+                            required
+                            step="0.01"
+                            min="0"
+                            value={formData.quantity}
+                            onChange={handleFormChange}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700"
+                            placeholder="Amount"
+                        />
                     </div>
 
                     <div>

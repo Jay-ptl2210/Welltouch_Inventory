@@ -10,12 +10,10 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import AddTransaction from './pages/AddTransaction';
 import Reports from './pages/Reports';
-import ManageParties from './pages/ManageParties';
-import AddParty from './pages/AddParty';
+import ManageEntities from './pages/ManageEntities';
 import Input from './pages/Input';
 import Output from './pages/Output';
 import Challan from './pages/Challan';
-import ManageCustomers from './pages/ManageCustomers';
 
 import logo from './assets/logo.png';
 
@@ -132,22 +130,13 @@ function Navigation() {
                 Reports
               </Link>
               <Link
-                to="/parties"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/parties')
+                to="/entities"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/entities')
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
-                Parties
-              </Link>
-              <Link
-                to="/customers"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/customers')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                  }`}
-              >
-                Customers
+                Parties & Customers
               </Link>
 
               <div className="relative ml-3" ref={userMenuRef}>
@@ -268,24 +257,24 @@ function Navigation() {
                 Reports
               </Link>
               <Link
-                to="/parties"
+                to="/reports"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/parties')
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
                   }`}
               >
-                Parties
+                Reports
               </Link>
               <Link
-                to="/customers"
+                to="/entities"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/customers')
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/entities')
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
                   }`}
               >
-                Customers
+                Parties & Customers
               </Link>
               <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
                 {user?.email}
@@ -369,10 +358,10 @@ function AppContent() {
               }
             />
             <Route
-              path="/parties"
+              path="/entities"
               element={
                 <ProtectedRoute>
-                  <ManageParties />
+                  <ManageEntities />
                 </ProtectedRoute>
               }
             />
@@ -397,22 +386,6 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Challan />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/customers"
-              element={
-                <ProtectedRoute>
-                  <ManageCustomers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/add-party"
-              element={
-                <ProtectedRoute>
-                  <AddParty />
                 </ProtectedRoute>
               }
             />

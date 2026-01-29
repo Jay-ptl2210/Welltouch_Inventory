@@ -21,13 +21,17 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.post('/', protect, async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, gst, phone, address, isBoth } = req.body;
         if (!name) {
             return res.status(400).json({ error: 'Party name is required' });
         }
 
         const party = await Party.create({
             name,
+            gst,
+            phone,
+            address,
+            isBoth: isBoth || false,
             user: req.user._id
         });
 
@@ -37,6 +41,34 @@ router.post('/', protect, async (req, res) => {
             return res.status(400).json({ error: 'Party with this name already exists' });
         }
         res.status(500).json({ error: 'Failed to create party' });
+    }
+});
+
+// @desc    Update a party
+// @route   PUT /api/parties/:id
+// @access  Private
+router.put('/:id', protect, async (req, res) => {
+    try {
+        const { name, gst, phone, address, isBoth } = req.body;
+        const party = await Party.findOne({ _id: req.params.id, user: req.user._id });
+
+        if (!party) {
+            return res.status(404).json({ error: 'Party not found' });
+        }
+
+        party.name = name || party.name;
+        party.gst = gst !== undefined ? gst : party.gst;
+        party.phone = phone !== undefined ? phone : party.phone;
+        party.address = address !== undefined ? address : party.address;
+        party.isBoth = isBoth !== undefined ? isBoth : party.isBoth;
+
+        const updatedParty = await party.save();
+        res.json(updatedParty);
+    } catch (error) {
+        if (error.code === 11000) {
+            return res.status(400).json({ error: 'Party with this name already exists' });
+        }
+        res.status(500).json({ error: 'Failed to update party' });
     }
 });
 

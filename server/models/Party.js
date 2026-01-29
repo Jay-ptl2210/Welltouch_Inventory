@@ -6,6 +6,22 @@ const partySchema = new mongoose.Schema({
         required: [true, 'Please add a party name'],
         trim: true
     },
+    gst: {
+        type: String,
+        trim: true
+    },
+    phone: {
+        type: String,
+        trim: true
+    },
+    address: {
+        type: String,
+        trim: true
+    },
+    isBoth: {
+        type: Boolean,
+        default: false
+    },
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

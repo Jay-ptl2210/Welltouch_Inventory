@@ -40,6 +40,9 @@ const challanSchema = new mongoose.Schema({
     shipAddress: String,
     transport: String,
     vehicleNumber: String,
+    dispatchThrough: String,
+    termsOfDelivery: String,
+    notes: String,
     challanNumber: {
         type: String,
         unique: true

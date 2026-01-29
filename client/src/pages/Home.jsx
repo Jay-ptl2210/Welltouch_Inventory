@@ -149,6 +149,10 @@ function Home() {
     );
   }
 
+  const filteredDashboardDataForDropdowns = filters.party
+    ? dashboardData.filter(item => (item.party?._id || item.party) === filters.party)
+    : dashboardData;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -202,7 +206,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Products</option>
-              {[...new Set(dashboardData.map(item => item.name))].sort().map(name => (
+              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.name))].sort().map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
             </select>
@@ -216,7 +220,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Sizes</option>
-              {[...new Set(dashboardData.map(item => item.size))].filter(Boolean).sort().map(size => (
+              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.size))].filter(Boolean).sort().map(size => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>
@@ -230,7 +234,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Types</option>
-              {[...new Set(dashboardData.map(item => item.type))].filter(Boolean).sort().map(t => (
+              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.type))].filter(Boolean).sort().map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
@@ -244,7 +248,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Weights</option>
-              {[...new Set(dashboardData.map(item => item.weight))].filter(w => w !== undefined).sort((a, b) => a - b).map(w => (
+              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.weight))].filter(w => w !== undefined).sort((a, b) => a - b).map(w => (
                 <option key={w} value={w}>{w}gm</option>
               ))}
             </select>
@@ -261,7 +265,7 @@ function Home() {
                   <span className="text-xs font-bold text-primary-600 uppercase tracking-wider mb-1 block truncate">
                     {item.party?.name || 'Generic'}
                   </span>
-                  <h3 className="text-lg font-bold text-gray-900 truncate" title={item.name}>
+                  <h3 className="text-lg font-bold text-gray-900 break-words" title={item.name}>
                     {item.name}
                   </h3>
                 </div>

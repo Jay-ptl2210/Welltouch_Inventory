@@ -411,23 +411,6 @@ function AddTransaction() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="relative overflow-hidden">
-                            <label htmlFor="type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
-                                Transaction Type <span className="text-red-500">*</span>
-                            </label>
-                            <select
-                                id="type"
-                                name="type"
-                                required
-                                value={formData.type}
-                                onChange={handleFormChange}
-                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
-                            >
-                                <option value="produce">Produce (Add)</option>
-                                <option value="delivered">Delivered (Subtract)</option>
-                            </select>
-                        </div>
-
-                        <div className="relative overflow-hidden">
                             <label htmlFor="unit" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                                 Unit <span className="text-red-500">*</span>
                             </label>
@@ -444,9 +427,7 @@ function AddTransaction() {
                                 <option value="pcs">Pieces</option>
                             </select>
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label htmlFor="quantity" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
                                 Quantity <span className="text-red-500">*</span>
@@ -491,6 +472,25 @@ function AddTransaction() {
                                 className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition"
                                 placeholder="Enter quantity"
                             />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="relative overflow-hidden">
+                            <label htmlFor="type" className="block text-xs md:text-sm font-medium text-gray-700 mb-1">
+                                Transaction Type <span className="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="type"
+                                name="type"
+                                required
+                                value={formData.type}
+                                onChange={handleFormChange}
+                                className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
+                            >
+                                <option value="produce">Produce (Add)</option>
+                                <option value="delivered">Delivered (Subtract)</option>
+                            </select>
                         </div>
 
                         <div>

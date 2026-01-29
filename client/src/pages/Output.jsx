@@ -214,6 +214,21 @@ function Output() {
                     </div>
 
                     <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Unit</label>
+                        <select
+                            name="unit"
+                            required
+                            value={formData.unit}
+                            onChange={handleFormChange}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white"
+                        >
+                            <option value="packet">Packets</option>
+                            <option value="linear">Linear</option>
+                            <option value="pcs">Pieces</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">
                             Quantity <span className="text-xs text-gray-400 font-normal">(Stock: {calculateAvailable()})</span>
                         </label>
@@ -228,21 +243,6 @@ function Output() {
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700"
                             placeholder="Amount"
                         />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Unit</label>
-                        <select
-                            name="unit"
-                            required
-                            value={formData.unit}
-                            onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white"
-                        >
-                            <option value="packet">Packets</option>
-                            <option value="linear">Linear</option>
-                            <option value="pcs">Pieces</option>
-                        </select>
                     </div>
 
                     <div>

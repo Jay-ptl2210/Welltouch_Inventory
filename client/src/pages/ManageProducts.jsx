@@ -367,16 +367,6 @@ function ManageProducts() {
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
-                      Transaction Type
-                    </label>
-                    <div className={`px-4 py-3 rounded-xl font-bold border ${formData.type === 'produce' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'
-                      }`}>
-                      {formData.type === 'produce' ? 'Production (Add Stock)' : 'Delivery (Subtract Stock)'}
-                    </div>
-                    <input type="hidden" name="type" value={formData.type} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">
                       Unit <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -391,10 +381,6 @@ function ManageProducts() {
                       <option value="pcs">Pieces</option>
                     </select>
                   </div>
-                </div>
-
-                {/* Quantity with Slots display and Date */}
-                <div className="grid grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
                       Quantity <span className="text-red-500">*</span> <span className="text-xs text-gray-400 font-normal">(Slots: {calculateSlots()})</span>
@@ -410,6 +396,19 @@ function ManageProducts() {
                       className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-gray-700"
                       placeholder="Enter quantity"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Transaction Type
+                    </label>
+                    <div className={`px-4 py-3 rounded-xl font-bold border ${formData.type === 'produce' ? 'bg-green-50 text-green-700 border-green-100' : 'bg-orange-50 text-orange-700 border-orange-100'
+                      }`}>
+                      {formData.type === 'produce' ? 'Production (Add Stock)' : 'Delivery (Subtract Stock)'}
+                    </div>
+                    <input type="hidden" name="type" value={formData.type} />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Date</label>
@@ -503,7 +502,7 @@ function ManageProducts() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
             >
               <option value="">All</option>
-              {[...new Set(products.map(p => p.name))].sort().map(name => (
+              {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.name))].sort().map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
             </select>
@@ -517,7 +516,7 @@ function ManageProducts() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
             >
               <option value="">All</option>
-              {[...new Set(products.map(p => p.size))].filter(Boolean).sort().map(size => (
+              {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.size))].filter(Boolean).sort().map(size => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>
@@ -531,7 +530,7 @@ function ManageProducts() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
             >
               <option value="">All</option>
-              {[...new Set(products.map(p => p.type || 'PPF TF'))].sort().map(t => (
+              {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.type || 'PPF TF'))].sort().map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>
@@ -545,7 +544,7 @@ function ManageProducts() {
               className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-sm bg-gray-50/30"
             >
               <option value="">All</option>
-              {[...new Set(products.map(p => p.weight))].filter(w => w !== undefined).sort((a, b) => a - b).map(w => (
+              {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.weight))].filter(w => w !== undefined).sort((a, b) => a - b).map(w => (
                 <option key={w} value={w}>{w}gm</option>
               ))}
             </select>

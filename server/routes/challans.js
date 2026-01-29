@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Challan = require('../models/Challan');
+const Party = require('../models/Party');
+const Customer = require('../models/Customer');
 const { protect } = require('../middleware/auth');
 
 // @desc    Create new challan
@@ -38,9 +40,38 @@ router.post('/', protect, async (req, res) => {
 router.get('/', protect, async (req, res) => {
     try {
         const challans = await Challan.find({ user: req.user.id })
-            .populate('customer', 'name')
             .sort({ createdAt: -1 });
-        res.status(200).json({ success: true, count: challans.length, data: challans });
+
+        // Robust manual population for Both-Party support
+        const updatedChallans = await Promise.all(challans.map(async (c) => {
+            const challanObj = c.toObject();
+            if (challanObj.customer) {
+                const customerId = challanObj.customer._id || challanObj.customer;
+
+                // 1. Try Customer collection first
+                let entity = await Customer.findById(customerId);
+
+                // 2. Fallback to Party collection (for isBoth entities)
+                if (!entity) {
+                    entity = await Party.findById(customerId);
+                }
+
+                if (entity) {
+                    challanObj.customer = {
+                        _id: entity._id,
+                        name: entity.name,
+                        address: entity.address,
+                        gst: entity.gst,
+                        phone: entity.phone
+                    };
+                } else {
+                    challanObj.customer = { _id: customerId, name: 'Unknown' };
+                }
+            }
+            return challanObj;
+        }));
+
+        res.status(200).json({ success: true, count: updatedChallans.length, data: updatedChallans });
     } catch (err) {
         res.status(400).json({ success: false, error: err.message });
     }

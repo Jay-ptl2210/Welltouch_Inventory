@@ -27,6 +27,10 @@ router.get('/', protect, async (req, res) => {
 router.post('/', protect, async (req, res) => {
     try {
         req.body.user = req.user.id;
+        // Ensure isBoth defaults to false if not provided
+        if (req.body.isBoth === undefined) {
+            req.body.isBoth = false;
+        }
         const customer = await Customer.create(req.body);
         res.status(201).json({
             success: true,
@@ -43,6 +47,36 @@ router.post('/', protect, async (req, res) => {
             success: false,
             error: err.message
         });
+    }
+});
+
+// @desc    Update a customer
+// @route   PUT /api/customers/:id
+// @access  Private
+router.put('/:id', protect, async (req, res) => {
+    try {
+        let customer = await Customer.findById(req.params.id);
+
+        if (!customer) {
+            return res.status(404).json({ success: false, error: 'Customer not found' });
+        }
+
+        // Make sure user owns customer
+        if (customer.user.toString() !== req.user.id) {
+            return res.status(401).json({ success: false, error: 'Not authorized' });
+        }
+
+        customer = await Customer.findByIdAndUpdate(req.params.id, req.body, {
+            new: true,
+            runValidators: true
+        });
+
+        res.status(200).json({ success: true, data: customer });
+    } catch (err) {
+        if (err.code === 11000) {
+            return res.status(400).json({ success: false, error: 'Customer already exists' });
+        }
+        res.status(500).json({ success: false, error: 'Server Error' });
     }
 });
 
