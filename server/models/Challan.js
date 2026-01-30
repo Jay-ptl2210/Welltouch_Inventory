@@ -42,6 +42,7 @@ const challanSchema = new mongoose.Schema({
     vehicleNumber: String,
     dispatchThrough: String,
     termsOfDelivery: String,
+    destination: String,
     notes: String,
     challanNumber: {
         type: String,

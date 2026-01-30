@@ -27,6 +27,7 @@ function Challan() {
         vehicleNumber: '',
         dispatchThrough: '',
         termsOfDelivery: '',
+        destination: '',
         notes: '',
         date: new Date().toISOString().split('T')[0]
     });
@@ -196,7 +197,7 @@ function Challan() {
         companyY += lineHeight;
         doc.text('Tadkeshwar, Surat - Gujarat 394170', companyX, companyY);
         companyY += lineHeight;
-        doc.text('Ph: 8141100123', companyX, companyY);
+        doc.text('Ph_No: 8141100123', companyX, companyY);
         companyY += lineHeight;
         doc.text('GSTIN: 24AADCW4754B1ZK', companyX, companyY);
         companyY += lineHeight;
@@ -239,14 +240,18 @@ function Challan() {
         leftY += 5;
         doc.text(`Dispatch Through: ${header.dispatchThrough || 'By Road'}`, leftX, leftY);
 
-        // 2. Transport
+        // 2. Transport & Destination
         leftY += 8;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
         doc.text('Transport Detail:', leftX, leftY);
         doc.setFont('helvetica', 'normal');
         leftY += 5;
         doc.text(`Name: ${header.transport || ''}`, leftX, leftY);
         leftY += 5;
         doc.text(`Vehicle Number: ${header.vehicleNumber || 'N/A'}`, leftX, leftY);
+        leftY += 5;
+        doc.text(`Destination: ${header.destination || 'N/A'}`, leftX, leftY);
 
         // 3. Terms
         leftY += 8;
@@ -277,7 +282,7 @@ function Challan() {
         doc.text(billAddrLines, custColX, rightY);
         rightY += (billAddrLines.length * 4);
 
-        doc.text(`Ph: ${billInfo.phone} | GST: ${billInfo.gst}`, custColX, rightY);
+        doc.text(`Ph: ${billInfo.phone} | GSTIN: ${billInfo.gst}`, custColX, rightY);
 
         // SHIP TO
         rightY += 8;
@@ -294,7 +299,7 @@ function Challan() {
         doc.text(shipAddrLines, custColX, rightY);
         rightY += (shipAddrLines.length * 4);
 
-        doc.text(`Ph: ${shipInfo.phone} | GST: ${shipInfo.gst}`, custColX, rightY);
+        doc.text(`Ph: ${shipInfo.phone} | GSTIN: ${shipInfo.gst}`, custColX, rightY);
         const rightBottomY = rightY;
 
 
@@ -345,7 +350,7 @@ function Challan() {
             head: [['Sr.', 'Product Name', 'Type', 'Linear', 'Packets', 'Pieces']],
             body: tableData,
             theme: 'grid',
-            headStyles: { fillColor: [0, 150, 136], textColor: 255, halign: 'center', font: 'helvetica', fontStyle: 'bold', fontSize: 10 },
+            headStyles: { fillColor: [0, 173, 186], textColor: 255, halign: 'center', font: 'helvetica', fontStyle: 'bold', fontSize: 10 },
             styles: { fontSize: 9, cellPadding: 3, font: 'helvetica', textColor: [0, 0, 0] },
             columnStyles: {
                 0: { cellWidth: 12, halign: 'center' },
@@ -416,6 +421,7 @@ function Challan() {
             vehicleNumber: challan.vehicleNumber || '',
             dispatchThrough: challan.dispatchThrough || '',
             termsOfDelivery: challan.termsOfDelivery || '',
+            destination: challan.destination || '',
             notes: challan.notes || '',
             date: new Date(challan.date).toISOString().split('T')[0]
         });
@@ -444,6 +450,7 @@ function Challan() {
             vehicleNumber: '',
             dispatchThrough: '',
             termsOfDelivery: '',
+            destination: '',
             notes: '',
             date: new Date().toISOString().split('T')[0]
         });
@@ -523,6 +530,7 @@ function Challan() {
                     vehicleNumber: headerData.vehicleNumber,
                     dispatchThrough: headerData.dispatchThrough,
                     termsOfDelivery: headerData.termsOfDelivery,
+                    destination: headerData.destination,
                     notes: headerData.notes,
                     date: headerData.date,
                     items: challanItems,
@@ -543,6 +551,7 @@ function Challan() {
                     vehicleNumber: headerData.vehicleNumber,
                     dispatchThrough: headerData.dispatchThrough,
                     termsOfDelivery: headerData.termsOfDelivery,
+                    destination: headerData.destination,
                     notes: headerData.notes,
                     date: headerData.date,
                     items: challanItems,
@@ -676,6 +685,17 @@ function Challan() {
                                 onChange={handleHeaderChange}
                                 className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
                                 placeholder="Ex: FOB, CIF, etc."
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Destination</label>
+                            <input
+                                type="text"
+                                name="destination"
+                                value={headerData.destination || ''}
+                                onChange={handleHeaderChange}
+                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                placeholder="City / Delivery Point"
                             />
                         </div>
                         <div className="md:col-span-2 lg:col-span-3">
