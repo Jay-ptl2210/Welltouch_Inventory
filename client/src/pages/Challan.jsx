@@ -312,7 +312,7 @@ function Challan() {
             const pkPerLin = item.packetsPerLinear || p?.packetsPerLinear || 0;
             const pcsPerPk = item.pcsPerPacket || p?.pcsPerPacket || 0;
 
-            const conversionInfo = pkPerLin > 0 ? `\n${pkPerLin} Pcs/Pkt, ${pcsPerPk} Pkt/Lin` : '';
+            const conversionInfo = pkPerLin > 0 ? `\n${pkPerLin} Pkt/Lin, ${pcsPerPk} Pcs/Pkt` : '';
 
             const pcs = item.quantityInPcs || (p ? toPcs(item.quantity, item.unit, p) : 0);
             const lin = item.unit === 'linear' ? item.quantity : (pkPerLin > 0 && pcsPerPk > 0 ? (pcs / (pkPerLin * pcsPerPk)) : 0);
