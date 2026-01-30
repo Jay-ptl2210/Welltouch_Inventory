@@ -251,7 +251,7 @@ function Challan() {
         // 3. Terms
         leftY += 8;
         doc.setFont('helvetica', 'bold');
-        doc.text('Terms of Payment :', leftX, leftY);
+        doc.text('Terms of Delivery :', leftX, leftY);
         doc.setFont('helvetica', 'normal');
         doc.text(header.termsOfDelivery || 'N/A', leftX + 35, leftY);
         const leftBottomY = leftY;
