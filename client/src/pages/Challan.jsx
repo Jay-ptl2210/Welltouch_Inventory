@@ -347,7 +347,7 @@ function Challan() {
 
         autoTable(doc, {
             startY: tableStartY,
-            head: [['Sr.', 'Product Name', 'Type', 'Linear', 'Packets', 'Pieces']],
+            head: [['Sr.', 'Product Name', 'Type', 'Liners', 'Packets', 'Pieces']],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [0, 173, 186], textColor: 255, halign: 'center', font: 'helvetica', fontStyle: 'bold', fontSize: 10 },

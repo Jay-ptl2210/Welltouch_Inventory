@@ -14,6 +14,7 @@ import ManageEntities from './pages/ManageEntities';
 import Input from './pages/Input';
 import Output from './pages/Output';
 import Challan from './pages/Challan';
+import DeliveryReport from './pages/DeliveryReport';
 
 import logo from './assets/logo.png';
 
@@ -110,6 +111,15 @@ function Navigation() {
                   }`}
               >
                 Challan
+              </Link>
+              <Link
+                to="/delivery-report"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/delivery-report')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Delivery Report
               </Link>
               <Link
                 to="/manage-products"
@@ -257,14 +267,14 @@ function Navigation() {
                 Reports
               </Link>
               <Link
-                to="/reports"
+                to="/delivery-report"
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/delivery-report')
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
                   }`}
               >
-                Reports
+                Delivery Report
               </Link>
               <Link
                 to="/entities"
@@ -386,6 +396,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Challan />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/delivery-report"
+              element={
+                <ProtectedRoute>
+                  <DeliveryReport />
                 </ProtectedRoute>
               }
             />
