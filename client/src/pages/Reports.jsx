@@ -479,10 +479,17 @@ function Reports() {
                         <div key={idx} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
 
                             {/* Card Header */}
-                            <div className="px-6 py-4 flex items-center justify-between border-b border-gray-50">
-                                <h3 className="text-base font-bold text-gray-800 line-clamp-1">{item.product.name}</h3>
-                                <div className="flex items-center gap-2">
-                                    <span className="bg-slate-700 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-tighter">
+                            <div className="px-6 py-4 border-b border-gray-50">
+                                <div className="mb-3">
+                                    <span className="text-[10px] font-black text-primary-600 uppercase tracking-widest block mb-0.5 break-words">
+                                        {item.product.party?.name || 'Generic'}
+                                    </span>
+                                    <h3 className="text-base font-bold text-gray-800 break-words" title={item.product.name}>
+                                        {item.product.name}
+                                    </h3>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span className="bg-slate-700 text-white text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-tighter shadow-sm">
                                         {item.product.type}
                                     </span>
                                     <span className="bg-white border text-gray-400 text-[10px] font-bold px-2 py-1 rounded-md uppercase border-gray-200">

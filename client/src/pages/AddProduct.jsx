@@ -180,7 +180,7 @@ function AddProduct() {
                 id="weight"
                 name="weight"
                 required
-                step="1"
+                step="0.01"
                 min="0"
                 value={formData.weight}
                 onChange={handleChange}

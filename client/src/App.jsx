@@ -15,6 +15,7 @@ import Input from './pages/Input';
 import Output from './pages/Output';
 import Challan from './pages/Challan';
 import DeliveryReport from './pages/DeliveryReport';
+import ManageTransports from './pages/ManageTransports';
 
 import logo from './assets/logo.png';
 
@@ -77,15 +78,6 @@ function Navigation() {
                 Dashboard
               </Link>
               <Link
-                to="/products"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/products')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                  }`}
-              >
-                Products
-              </Link>
-              <Link
                 to="/input"
                 className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/input')
                   ? 'bg-primary-600 text-white'
@@ -93,15 +85,6 @@ function Navigation() {
                   }`}
               >
                 Production
-              </Link>
-              <Link
-                to="/output"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/output')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                  }`}
-              >
-                Delivery
               </Link>
               <Link
                 to="/challan"
@@ -113,13 +96,22 @@ function Navigation() {
                 Challan
               </Link>
               <Link
-                to="/delivery-report"
-                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/delivery-report')
+                to="/products"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/products')
                   ? 'bg-primary-600 text-white'
                   : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
-                Delivery Report
+                Products
+              </Link>
+              <Link
+                to="/output"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/output')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Delivery
               </Link>
               <Link
                 to="/manage-products"
@@ -137,7 +129,16 @@ function Navigation() {
                   : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
-                Reports
+                Report
+              </Link>
+              <Link
+                to="/delivery-report"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/delivery-report')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Delivery Report
               </Link>
               <Link
                 to="/entities"
@@ -146,7 +147,16 @@ function Navigation() {
                   : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
                   }`}
               >
-                Parties & Customers
+                Party & Customer
+              </Link>
+              <Link
+                to="/transports"
+                className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/transports')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+                  }`}
+              >
+                Transport
               </Link>
 
               <div className="relative ml-3" ref={userMenuRef}>
@@ -207,16 +217,6 @@ function Navigation() {
                 Dashboard
               </Link>
               <Link
-                to="/products"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Products
-              </Link>
-              <Link
                 to="/input"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/input')
@@ -227,16 +227,6 @@ function Navigation() {
                 Production
               </Link>
               <Link
-                to="/output"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/output')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Delivery
-              </Link>
-              <Link
                 to="/challan"
                 onClick={() => setMobileMenuOpen(false)}
                 className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/challan')
@@ -245,6 +235,26 @@ function Navigation() {
                   }`}
               >
                 Challan
+              </Link>
+              <Link
+                to="/products"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Products
+              </Link>
+              <Link
+                to="/output"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/output')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Delivery
               </Link>
               <Link
                 to="/manage-products"
@@ -264,7 +274,7 @@ function Navigation() {
                   : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
                   }`}
               >
-                Reports
+                Report
               </Link>
               <Link
                 to="/delivery-report"
@@ -284,7 +294,17 @@ function Navigation() {
                   : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
                   }`}
               >
-                Parties & Customers
+                Party & Customer
+              </Link>
+              <Link
+                to="/transports"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/transports')
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                  }`}
+              >
+                Transport
               </Link>
               <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
                 {user?.email}
@@ -404,6 +424,14 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <DeliveryReport />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/transports"
+              element={
+                <ProtectedRoute>
+                  <ManageTransports />
                 </ProtectedRoute>
               }
             />

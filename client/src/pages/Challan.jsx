@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getProducts, addTransaction, getParties, getCustomers, getChallans, saveChallan, updateChallan, deleteChallan } from '../services/api';
+import { getProducts, addTransaction, getParties, getCustomers, getChallans, saveChallan, updateChallan, deleteChallan, getTransports } from '../services/api';
 import { format } from 'date-fns';
 import { toPcs } from '../utils/calculations';
 import jsPDF from 'jspdf';
@@ -12,6 +12,7 @@ function Challan() {
     const [parties, setParties] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [challans, setChallans] = useState([]);
+    const [transports, setTransports] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [currentPage, setCurrentPage] = useState(1);
@@ -49,13 +50,15 @@ function Challan() {
     const loadInitialData = async () => {
         try {
             setLoading(true);
-            const [productsRes, partiesRes, customersRes, challansRes] = await Promise.all([
+            const [productsRes, partiesRes, customersRes, challansRes, transportsRes] = await Promise.all([
                 getProducts(),
                 getParties(),
                 getCustomers(),
-                getChallans()
+                getChallans(),
+                getTransports()
             ]);
             setProducts(productsRes.data);
+            setTransports(transportsRes.data || []);
             setParties(partiesRes.data);
 
             // Include parties with isBoth=true in customers list
@@ -86,6 +89,14 @@ function Challan() {
                     shipAddress: selectedCust.address || ''
                 }));
             }
+        }
+
+        if (name === 'transport') {
+            const selectedTransport = transports.find(t => t.name === value);
+            setHeaderData(prev => ({
+                ...prev,
+                vehicleNumber: selectedTransport?.vehicles?.[0] || ''
+            }));
         }
     };
 
@@ -645,25 +656,30 @@ function Challan() {
                         </div>
                         <div>
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Transport Name</label>
-                            <input
-                                type="text"
+                            <select
                                 name="transport"
                                 value={headerData.transport}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
-                                placeholder="Transport Agency Name"
-                            />
+                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">Select Transport</option>
+                                {transports.map(t => <option key={t._id} value={t.name}>{t.name}</option>)}
+                            </select>
                         </div>
                         <div>
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Vehicle Number</label>
-                            <input
-                                type="text"
+                            <select
                                 name="vehicleNumber"
                                 value={headerData.vehicleNumber}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
-                                placeholder="GJ-XX-XXXX"
-                            />
+                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
+                            >
+                                <option value="">Select Vehicle</option>
+                                {transports.find(t => t.name === headerData.transport)?.vehicles?.map((v, i) => (
+                                    <option key={i} value={v}>{v}</option>
+                                ))}
+                                {!headerData.transport && <option disabled>Select transport first</option>}
+                            </select>
                         </div>
                         <div>
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Dispatch Through</label>

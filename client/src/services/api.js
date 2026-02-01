@@ -108,4 +108,10 @@ export const addCustomer = (customer) => api.post('/customers', customer);
 export const updateCustomer = (id, customer) => api.put(`/customers/${id}`, customer);
 export const deleteCustomer = (id) => api.delete(`/customers/${id}`);
 
+// Transports API
+export const getTransports = () => api.get('/transports');
+export const addTransport = (data) => api.post('/transports', data);
+export const updateTransport = (id, data) => api.put(`/transports/${id}`, data);
+export const deleteTransport = (id) => api.delete(`/transports/${id}`);
+
 export default api;
