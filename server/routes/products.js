@@ -223,10 +223,17 @@ router.put('/:id', protect, async (req, res) => {
     }
 
     if (previousStock !== undefined) {
-      product.previousStock = toPcs(previousStock, quantityUnit, {
+      const newPrevPcs = toPcs(previousStock, quantityUnit, {
         packetsPerLinear: product.packetsPerLinear,
         pcsPerPacket: product.pcsPerPacket
       });
+      const oldPrevPcs = product.previousStock || 0;
+      const prevDiff = newPrevPcs - oldPrevPcs;
+
+      product.previousStock = newPrevPcs;
+      // Adjust current quantity by the change in opening stock
+      product.quantity += prevDiff;
+      if (product.quantity < 0) product.quantity = 0;
     }
 
     await product.save();
