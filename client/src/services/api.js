@@ -86,6 +86,8 @@ export const getTransactions = () => api.get('/transactions');
 export const addTransaction = (transaction) => api.post('/transactions', transaction);
 export const updateTransaction = (id, transaction) => api.put(`/transactions/${id}`, transaction);
 export const deleteTransaction = (id) => api.delete(`/transactions/${id}`);
+export const deleteTransactionsByChallan = (challanNumber) => api.delete(`/transactions/challan/${challanNumber}`);
+
 
 // Dashboard API
 export const getDashboard = () => api.get('/dashboard');

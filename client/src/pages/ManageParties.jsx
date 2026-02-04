@@ -59,7 +59,7 @@ function ManageParties() {
     };
 
     const totalItems = parties.length;
-    const paginatedParties = parties.slice(
+    const paginatedParties = parties.slice().sort((a, b) => a.name.localeCompare(b.name)).slice(
         (currentPage - 1) * pageSize,
         currentPage * pageSize
     );

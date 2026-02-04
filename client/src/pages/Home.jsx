@@ -192,7 +192,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Parties</option>
-              {parties.map(p => (
+              {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                 <option key={p._id} value={p._id}>{p.name}</option>
               ))}
             </select>
@@ -206,7 +206,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Products</option>
-              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.name))].sort().map(name => (
+              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.name))].sort((a, b) => a.localeCompare(b)).map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
             </select>
@@ -220,7 +220,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Sizes</option>
-              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.size))].filter(Boolean).sort().map(size => (
+              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.size))].filter(Boolean).sort((a, b) => a.localeCompare(b)).map(size => (
                 <option key={size} value={size}>{size}</option>
               ))}
             </select>
@@ -234,7 +234,7 @@ function Home() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Types</option>
-              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.type))].filter(Boolean).sort().map(t => (
+              {[...new Set(filteredDashboardDataForDropdowns.map(item => item.type))].filter(Boolean).sort((a, b) => a.localeCompare(b)).map(t => (
                 <option key={t} value={t}>{t}</option>
               ))}
             </select>

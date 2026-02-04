@@ -115,7 +115,7 @@ function AddProduct() {
               className="w-full px-3 md:px-4 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
             >
               <option value="">Select a Party</option>
-              {parties.map(p => (
+              {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                 <option key={p._id} value={p._id}>{p.name}</option>
               ))}
             </select>

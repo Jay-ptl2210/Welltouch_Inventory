@@ -186,7 +186,7 @@ function Output() {
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white"
                         >
                             <option value="">Select a party</option>
-                            {parties.map(p => (
+                            {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                                 <option key={p._id} value={p._id}>{p.name}</option>
                             ))}
                         </select>
@@ -205,6 +205,7 @@ function Output() {
                             <option value="">{formData.partyId ? 'Select a product' : 'Select a party first'}</option>
                             {products
                                 .filter(p => !formData.partyId || (p.party?._id || p.party) === formData.partyId)
+                                .sort((a, b) => a.name.localeCompare(b.name))
                                 .map(p => (
                                     <option key={p._id} value={p._id}>
                                         {p.name} - {p.size} ({p.type}) - {p.weight}gm | {p.packetsPerLinear} Pkt/Lin, {p.pcsPerPacket} Pcs/Pkt

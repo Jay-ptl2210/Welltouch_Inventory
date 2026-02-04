@@ -137,7 +137,7 @@ function ManageTransports() {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {transports.map((t) => (
+                    {transports.slice().sort((a, b) => a.name.localeCompare(b.name)).map((t) => (
                         <div key={t._id} className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative">
                             <div className="flex justify-between items-start mb-6">
                                 <div className="space-y-1">

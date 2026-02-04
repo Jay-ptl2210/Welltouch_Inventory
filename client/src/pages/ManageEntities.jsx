@@ -82,7 +82,7 @@ function ManageEntities() {
             );
         }
 
-        setFilteredEntities(result);
+        setFilteredEntities(result.sort((a, b) => a.name.localeCompare(b.name)));
     };
 
     const handleSave = async (e) => {

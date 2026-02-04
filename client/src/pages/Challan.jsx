@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getProducts, addTransaction, getParties, getCustomers, getChallans, saveChallan, updateChallan, deleteChallan, getTransports } from '../services/api';
+import { getProducts, addTransaction, getParties, getCustomers, getChallans, saveChallan, updateChallan, deleteChallan, getTransports, deleteTransactionsByChallan } from '../services/api';
 import { format } from 'date-fns';
 import { toPcs } from '../utils/calculations';
 import jsPDF from 'jspdf';
@@ -58,13 +58,13 @@ function Challan() {
                 getTransports()
             ]);
             setProducts(productsRes.data);
-            setTransports(transportsRes.data || []);
-            setParties(partiesRes.data);
+            setTransports((transportsRes.data || []).sort((a, b) => a.name.localeCompare(b.name)));
+            setParties((partiesRes.data || []).sort((a, b) => a.name.localeCompare(b.name)));
 
             // Include parties with isBoth=true in customers list
             const customersData = customersRes.data.data || customersRes.data;
             const bothParties = (partiesRes.data || []).filter(p => p.isBoth);
-            setCustomers([...customersData, ...bothParties]);
+            setCustomers([...customersData, ...bothParties].sort((a, b) => a.name.localeCompare(b.name)));
 
             setChallans(challansRes.data.data || challansRes.data);
         } catch (err) {
@@ -125,8 +125,25 @@ function Challan() {
         }
 
         const qtyPcs = toPcs(currentItem.quantity, currentItem.unit, selectedProduct);
-        if (qtyPcs > selectedProduct.quantity) {
-            setMessage({ type: 'error', text: `Insufficient stock! Available: ${selectedProduct.quantity.toFixed(1)} pcs` });
+
+        // How much of this product was originally in the saved challan currently in DB?
+        // We need this to "revert" the deduction in our local calculation
+        const originalSavedPcs = (editingChallan?.items || [])
+            .filter(item => (item.product?._id || item.product) === currentItem.productId)
+            .reduce((sum, item) => sum + (item.quantityInPcs || 0), 0);
+
+        // Calculate total quantity currently in the form items list for this product
+        const alreadyAddedPcs = items
+            .filter(item => item.productId === currentItem.productId)
+            .reduce((sum, item) => sum + (item.qtyPcs || 0), 0);
+
+        // Check against remaining available stock
+        // Available = (Stock currently in DB) + (What this challan already took) - (What we've added to the list in this session)
+        const availableStock = (selectedProduct.quantity || 0) + originalSavedPcs - alreadyAddedPcs;
+
+        if (qtyPcs > availableStock) {
+            const totalPool = (selectedProduct.quantity || 0) + originalSavedPcs;
+            setMessage({ type: 'error', text: `Insufficient stock! Available: ${availableStock.toFixed(1)} pcs (${totalPool.toFixed(1)} total pool, ${alreadyAddedPcs.toFixed(1)} already in this list)` });
             return;
         }
 
@@ -158,12 +175,26 @@ function Challan() {
     const calculateAvailable = () => {
         const p = products.find(prod => prod._id === currentItem.productId);
         if (!p) return '-';
-        const totalPcs = p.quantity || 0;
+
+        // How much of this product was originally in the saved challan currently in DB?
+        // We need this to "revert" the deduction in our local calculation
+        const originalSavedPcs = (editingChallan?.items || [])
+            .filter(item => (item.product?._id || item.product) === currentItem.productId)
+            .reduce((sum, item) => sum + (item.quantityInPcs || 0), 0);
+
+        // Calculate total quantity currently in the form items list for this product
+        const alreadyInListPcs = items
+            .filter(item => item.productId === currentItem.productId)
+            .reduce((sum, item) => sum + (item.qtyPcs || 0), 0);
+
+        // Available = (Stock currently in DB) + (What this challan already took) - (What we've added to the list in this session)
+        const availablePcs = (p.quantity || 0) + originalSavedPcs - alreadyInListPcs;
+
         const unit = currentItem.unit;
-        if (unit === 'pcs') return totalPcs.toFixed(1);
-        if (unit === 'packet') return p.pcsPerPacket > 0 ? (totalPcs / p.pcsPerPacket).toFixed(1) : '0.0';
+        if (unit === 'pcs') return availablePcs.toFixed(1);
+        if (unit === 'packet') return p.pcsPerPacket > 0 ? (availablePcs / p.pcsPerPacket).toFixed(1) : '0.0';
         const pcsPerLinear = p.packetsPerLinear * p.pcsPerPacket;
-        return pcsPerLinear > 0 ? (totalPcs / pcsPerLinear).toFixed(1) : '0.0';
+        return pcsPerLinear > 0 ? (availablePcs / pcsPerLinear).toFixed(1) : '0.0';
     };
 
 
@@ -412,12 +443,27 @@ function Challan() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Delete this challan record? (Historical transactions will remain)')) return;
+        const challanToDelete = challans.find(c => c._id === id);
+        if (!challanToDelete) return;
+
+        if (!window.confirm(`Delete challan ${challanToDelete.challanNumber}? This will restore the stock for all items in this challan.`)) return;
+
         try {
+            // Delete associated transactions first (this restores stock)
+            if (challanToDelete.challanNumber) {
+                try {
+                    await deleteTransactionsByChallan(challanToDelete.challanNumber);
+                } catch (err) {
+                    console.warn('No transactions to delete or error:', err);
+                }
+            }
+
+            // Then delete the challan record
             await deleteChallan(id);
+            setMessage({ type: 'success', text: 'Challan deleted and stock restored' });
             loadInitialData();
         } catch (err) {
-            setMessage({ type: 'error', text: 'Failed to delete' });
+            setMessage({ type: 'error', text: 'Failed to delete challan' });
         }
     };
 
@@ -512,26 +558,33 @@ function Challan() {
                     pcsPerPacket: p.pcsPerPacket
                 });
 
-                // Only create NEW transactions if NOT editing
-                // Todo: Handle transaction updates for edits in future
-                if (!editingChallan) {
-                    transactionsToSave.push({
-                        productId: p._id,
-                        productName: p.name,
-                        size: p.size,
-                        party: item.partyId,
-                        type: 'delivered',
-                        quantity: item.quantity,
-                        unit: item.unit,
-                        date: headerData.date,
-                        note: `Challan - Veh: ${headerData.vehicleNumber}`
-                    });
-                }
+                // Prepare transactions for saving (used for both new and edited challans)
+                transactionsToSave.push({
+                    productId: p._id,
+                    productName: p.name,
+                    size: p.size,
+                    party: item.partyId,
+                    type: 'delivered',
+                    quantity: item.quantity,
+                    unit: item.unit,
+                    date: headerData.date,
+                    note: `Challan - Veh: ${headerData.vehicleNumber}`
+                });
             }
 
             let finalChallanData;
 
             if (editingChallan) {
+                const oldChallanNo = editingChallan.challanNumber;
+
+                // 1. Delete old transactions associated with this challan (reverts stock)
+                try {
+                    await deleteTransactionsByChallan(oldChallanNo);
+                } catch (err) {
+                    console.warn('No existing transactions to delete or error deleting:', err);
+                }
+
+                // 2. Update challan record
                 const res = await updateChallan(editingChallan._id, {
                     customer: headerData.customerId,
                     address: headerData.address,
@@ -550,6 +603,14 @@ function Challan() {
                     totalPieces: totalPcs
                 });
                 finalChallanData = res.data.data || res.data;
+
+                // 3. Create new transactions with updated data
+                const updatedTransactions = transactionsToSave.map(t => ({
+                    ...t,
+                    note: `Challan No# ${oldChallanNo} - Veh: ${headerData.vehicleNumber || 'N/A'}`
+                }));
+
+                await Promise.all(updatedTransactions.map(t => addTransaction(t)));
                 setMessage({ type: 'success', text: 'Challan updated and PDF generated!' });
             } else {
                 // 1. SAVE CHALLAN RECORD FIRST
@@ -640,7 +701,7 @@ function Challan() {
                                 className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">Select Customer</option>
-                                {customers.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                                {customers.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                             </select>
                         </div>
                         <div>
@@ -663,7 +724,7 @@ function Challan() {
                                 className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">Select Transport</option>
-                                {transports.map(t => <option key={t._id} value={t.name}>{t.name}</option>)}
+                                {transports.slice().sort((a, b) => a.name.localeCompare(b.name)).map(t => <option key={t._id} value={t.name}>{t.name}</option>)}
                             </select>
                         </div>
                         <div>
@@ -760,7 +821,7 @@ function Challan() {
                                 className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
                             >
                                 <option value="">Same as Bill To</option>
-                                {customers.map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
+                                {customers.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c._id} value={c.name}>{c.name}</option>)}
                             </select>
                         </div>
                         <div className="md:col-span-2">
@@ -793,7 +854,7 @@ function Challan() {
                                     className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
                                 >
                                     <option value="">Select a party</option>
-                                    {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                                    {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                                 </select>
                             </div>
                             <div>
@@ -808,6 +869,7 @@ function Challan() {
                                     <option value="">{currentItem.partyId ? 'Select a product' : 'Select a party first'}</option>
                                     {products
                                         .filter(p => !currentItem.partyId || (p.party?._id || p.party) === currentItem.partyId)
+                                        .sort((a, b) => a.name.localeCompare(b.name))
                                         .map(p => (
                                             <option key={p._id} value={p._id}>
                                                 {p.name} - {p.size} ({p.type}) - {p.weight}gm | {p.packetsPerLinear} Pkt/Lin, {p.pcsPerPacket} Pcs/Pkt
@@ -871,7 +933,7 @@ function Challan() {
                                 <span className="w-1.5 h-1.5 bg-primary-600 rounded-full"></span>
                                 Items Summary ({items.length})
                             </h2>
-                            <div className="overflow-hidden rounded-2xl border border-slate-100 shadow-sm">
+                            <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-sm">
                                 <table className="min-w-full divide-y divide-slate-100">
                                     <thead>
                                         <tr className="bg-slate-50/50">

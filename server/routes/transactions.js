@@ -304,4 +304,64 @@ router.delete('/:id', protect, async (req, res) => {
   }
 });
 
+// @desc    Delete transactions by challan number
+// @route   DELETE /api/transactions/challan/:challanNumber
+// @access  Private
+router.delete('/challan/:challanNumber', protect, async (req, res) => {
+  try {
+    const challanNumber = req.params.challanNumber;
+
+    // Find all transactions with this challan number in the note field
+    const transactions = await Transaction.find({
+      user: req.user._id,
+      note: { $regex: `Challan No# ${challanNumber}`, $options: 'i' }
+    });
+
+    if (transactions.length === 0) {
+      return res.json({ success: true, deletedCount: 0, message: 'No transactions found for this challan' });
+    }
+
+    // Revert stock for each transaction
+    for (const transaction of transactions) {
+      const product = await Product.findOne({
+        _id: transaction.product,
+        user: req.user._id
+      });
+
+      if (product) {
+        // Revert the transaction effect on stock
+        const quantityChange =
+          transaction.type === 'produce'
+            ? parseFloat(transaction.quantityInPcs)
+            : -parseFloat(transaction.quantityInPcs);
+
+        product.quantity -= quantityChange;
+        if (product.quantity < 0) {
+          product.quantity = 0;
+        }
+
+        await product.save();
+      }
+    }
+
+    // Delete all transactions
+    const deleteResult = await Transaction.deleteMany({
+      user: req.user._id,
+      note: { $regex: `Challan No# ${challanNumber}`, $options: 'i' }
+    });
+
+    res.json({
+      success: true,
+      deletedCount: deleteResult.deletedCount,
+      message: `Deleted ${deleteResult.deletedCount} transaction(s) for challan ${challanNumber}`
+    });
+  } catch (error) {
+    console.error('Error deleting transactions by challan:', error);
+    res.status(500).json({
+      error: 'Failed to delete transactions',
+      details: process.env.NODE_ENV === 'production' ? undefined : error.message
+    });
+  }
+});
+
 module.exports = router;

@@ -218,7 +218,7 @@ function Products() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Parties</option>
-              {parties.map(party => (
+              {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(party => (
                 <option key={party._id} value={party._id}>{party.name}</option>
               ))}
             </select>
@@ -232,7 +232,7 @@ function Products() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none bg-white font-medium text-sm"
             >
               <option value="">All Products</option>
-              {[...new Set(products.map(p => p.name))].sort().map(name => (
+              {[...new Set(products.map(p => p.name))].sort((a, b) => a.localeCompare(b)).map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
             </select>
@@ -390,7 +390,7 @@ function Products() {
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-xs"
                             >
                               <option value="">No Party</option>
-                              {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                              {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                             </select>
                           ) : (
                             <span className="text-sm text-gray-500">{product.party?.name || 'N/A'}</span>

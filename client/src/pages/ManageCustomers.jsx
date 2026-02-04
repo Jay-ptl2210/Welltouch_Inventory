@@ -138,7 +138,7 @@ function ManageCustomers() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {customers.map((c) => (
+                                    {customers.slice().sort((a, b) => a.name.localeCompare(b.name)).map((c) => (
                                         <tr key={c._id} className="hover:bg-slate-50/50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="text-sm font-black text-slate-700">{c.name}</div>

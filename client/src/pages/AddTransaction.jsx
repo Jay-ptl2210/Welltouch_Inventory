@@ -46,7 +46,7 @@ function AddTransaction() {
                     .filter(p => p.name === formData.productName && (p.party?._id || p.party) === formData.party)
                     .map(p => p.size)
             )];
-            setSizes(productSizes);
+            setSizes(productSizes.sort((a, b) => a.localeCompare(b)));
             if (!productSizes.includes(formData.size)) {
                 setFormData(prev => ({ ...prev, size: '', productType: '', productWeight: '' }));
             }
@@ -68,7 +68,7 @@ function AddTransaction() {
                 .map(p => p.type || 'PPF TF');
 
             const uniqueTypes = [...new Set(types)];
-            setAvailableTypes(uniqueTypes);
+            setAvailableTypes(uniqueTypes.sort((a, b) => a.localeCompare(b)));
 
             if (uniqueTypes.length === 1) {
                 setFormData(prev => ({ ...prev, productType: uniqueTypes[0] }));
@@ -92,7 +92,7 @@ function AddTransaction() {
                 .map(p => p.weight || 0);
 
             const uniqueWeights = [...new Set(weights)];
-            setAvailableWeights(uniqueWeights);
+            setAvailableWeights(uniqueWeights.sort((a, b) => a - b));
 
             if (uniqueWeights.length === 1) {
                 setFormData(prev => ({ ...prev, productWeight: uniqueWeights[0] }));
@@ -222,7 +222,7 @@ function AddTransaction() {
         products
             .filter(p => !formData.party || (p.party?._id || p.party) === formData.party)
             .map(p => p.name)
-    )];
+    )].sort((a, b) => a.localeCompare(b));
 
     return (
         <div className="max-w-2xl mx-auto">
@@ -257,7 +257,7 @@ function AddTransaction() {
                             className="w-full px-3 py-2 text-sm md:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition appearance-none bg-white"
                         >
                             <option value="">Select a party</option>
-                            {parties.map(p => (
+                            {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => (
                                 <option key={p._id} value={p._id}>{p.name}</option>
                             ))}
                         </select>

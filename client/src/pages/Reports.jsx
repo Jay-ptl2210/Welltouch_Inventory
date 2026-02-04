@@ -312,7 +312,7 @@ function Reports() {
                         <div className="relative">
                             <select name="party" value={filters.party} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
                                 <option value="">All Parties</option>
-                                {parties.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                                {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -324,7 +324,7 @@ function Reports() {
                         <div className="relative">
                             <select name="name" value={filters.name} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
                                 <option value="">All Products</option>
-                                {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.name))].sort().map(n => <option key={n} value={n}>{n}</option>)}
+                                {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.name))].sort((a, b) => a.localeCompare(b)).map(n => <option key={n} value={n}>{n}</option>)}
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -336,7 +336,7 @@ function Reports() {
                         <div className="relative">
                             <select name="size" value={filters.size} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
                                 <option value="">All Sizes</option>
-                                {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.size))].filter(Boolean).sort().map(s => <option key={s} value={s}>{s}</option>)}
+                                {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.size))].filter(Boolean).sort((a, b) => a.localeCompare(b)).map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -348,7 +348,7 @@ function Reports() {
                         <div className="relative">
                             <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full bg-transparent border-0 border-b-2 border-gray-100 py-1.5 focus:border-indigo-500 outline-none font-bold text-sm appearance-none cursor-pointer">
                                 <option value="">All Types</option>
-                                {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.type))].filter(Boolean).sort().map(t => <option key={t} value={t}>{t}</option>)}
+                                {[...new Set((filters.party ? products.filter(p => (p.party?._id || p.party) === filters.party) : products).map(p => p.type))].filter(Boolean).sort((a, b) => a.localeCompare(b)).map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                             <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none">
                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
