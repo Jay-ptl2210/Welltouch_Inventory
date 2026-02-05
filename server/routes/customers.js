@@ -8,7 +8,7 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/', protect, async (req, res) => {
     try {
-        const customers = await Customer.find({ user: req.user.id }).sort({ name: 1 });
+        const customers = await Customer.find({}).sort({ name: 1 });
         res.status(200).json({
             success: true,
             data: customers
@@ -61,10 +61,7 @@ router.put('/:id', protect, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Customer not found' });
         }
 
-        // Make sure user owns customer
-        if (customer.user.toString() !== req.user.id) {
-            return res.status(401).json({ success: false, error: 'Not authorized' });
-        }
+        // Shared data model - no ownership check needed
 
         customer = await Customer.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
@@ -94,13 +91,7 @@ router.delete('/:id', protect, async (req, res) => {
             });
         }
 
-        // Make sure user owns customer
-        if (customer.user.toString() !== req.user.id) {
-            return res.status(401).json({
-                success: false,
-                error: 'Not authorized'
-            });
-        }
+        // Shared data model - no ownership check needed
 
         await customer.deleteOne();
 

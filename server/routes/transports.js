@@ -8,7 +8,7 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/', protect, async (req, res) => {
     try {
-        const transports = await Transport.find({ user: req.user._id }).sort({ name: 1 });
+        const transports = await Transport.find({}).sort({ name: 1 });
         res.json(transports);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch transports' });
@@ -40,8 +40,8 @@ router.post('/', protect, async (req, res) => {
 // @access  Private
 router.put('/:id', protect, async (req, res) => {
     try {
-        const transport = await Transport.findOneAndUpdate(
-            { _id: req.params.id, user: req.user._id },
+        const transport = await Transport.findByIdAndUpdate(
+            req.params.id,
             req.body,
             { new: true, runValidators: true }
         );
@@ -61,7 +61,7 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Private
 router.delete('/:id', protect, async (req, res) => {
     try {
-        const transport = await Transport.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+        const transport = await Transport.findByIdAndDelete(req.params.id);
 
         if (!transport) {
             return res.status(404).json({ error: 'Transport not found' });

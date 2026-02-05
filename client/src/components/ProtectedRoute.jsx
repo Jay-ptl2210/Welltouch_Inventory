@@ -2,8 +2,8 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+const ProtectedRoute = ({ children, module, level = 'view' }) => {
+  const { user, isAuthenticated, loading } = useAuth();
 
   if (loading) {
     return (
@@ -13,7 +13,32 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Super user has access to everything
+  if (user?.role === 'super_user') {
+    return children;
+  }
+
+  // Check module permission
+  if (module) {
+    const userPermissions = user?.permissions || {};
+    const modulePermission = userPermissions[module] || 'none';
+
+    if (level === 'view') {
+      if (modulePermission !== 'view' && modulePermission !== 'edit') {
+        return <Navigate to="/" replace />; // Redirect to dashboard if no access
+      }
+    } else if (level === 'edit') {
+      if (modulePermission !== 'edit') {
+        return <Navigate to="/" replace />;
+      }
+    }
+  }
+
+  return children;
 };
 
 export default ProtectedRoute;

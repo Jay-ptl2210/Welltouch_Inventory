@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { getCustomers, addCustomer, deleteCustomer } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function ManageCustomers() {
+    const { user } = useAuth();
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
+
+    const isEditable = user?.role === 'super_user' || user?.permissions?.entities === 'edit';
     const [formData, setFormData] = useState({
         name: '',
         address: ''
@@ -86,9 +90,10 @@ function ManageCustomers() {
                                     type="text"
                                     name="name"
                                     required
+                                    disabled={!isEditable}
                                     value={formData.name}
                                     onChange={handleFormChange}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 transition-all"
+                                    className={`w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 transition-all ${!isEditable ? 'cursor-not-allowed opacity-60' : ''}`}
                                     placeholder="Enter full name"
                                 />
                             </div>
@@ -96,21 +101,29 @@ function ManageCustomers() {
                                 <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Address</label>
                                 <textarea
                                     name="address"
+                                    disabled={!isEditable}
                                     value={formData.address}
                                     onChange={handleFormChange}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 transition-all"
+                                    className={`w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 transition-all ${!isEditable ? 'cursor-not-allowed opacity-60' : ''}`}
                                     placeholder="Optional address"
                                     rows="3"
                                 />
                             </div>
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl shadow-lg shadow-primary-500/20 transition-all disabled:opacity-50"
-                            >
-                                {loading ? 'Adding...' : 'Add Customer'}
-                            </button>
+                            {isEditable && (
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-primary-600 hover:bg-primary-700 text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl shadow-lg shadow-primary-500/20 transition-all disabled:opacity-50"
+                                >
+                                    {loading ? 'Adding...' : 'Add Customer'}
+                                </button>
+                            )}
+                            {!isEditable && (
+                                <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-widest italic pt-2">
+                                    View Only Access
+                                </p>
+                            )}
                         </form>
 
                         {message.text && (
@@ -134,7 +147,7 @@ function ManageCustomers() {
                                     <tr className="bg-slate-50/30">
                                         <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Name</th>
                                         <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Address</th>
-                                        <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                        {isEditable && <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -147,14 +160,16 @@ function ManageCustomers() {
                                                 <div className="text-xs text-slate-500 font-medium truncate max-w-[200px]">{c.address || '-'}</div>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                <button
-                                                    onClick={() => handleDelete(c._id)}
-                                                    className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                    </svg>
-                                                </button>
+                                                {isEditable && (
+                                                    <button
+                                                        onClick={() => handleDelete(c._id)}
+                                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}

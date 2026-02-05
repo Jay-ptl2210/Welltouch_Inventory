@@ -2,13 +2,14 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { generateToken, generateRefreshToken, protect } = require('../middleware/auth');
+const { isSuperUser } = require('../middleware/rbac');
 
-// @desc    Register user
+// @desc    Register user (Only Super User can register others now, or keep public if needed)
 // @route   POST /api/auth/register
-// @access  Public
+// @access  Public (or Private)
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role, permissions } = req.body;
 
     // Validation
     if (!name || !email || !password) {
@@ -25,7 +26,20 @@ router.post('/register', async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password
+      password,
+      role: role || 'user',
+      permissions: permissions || {
+        dashboard: 'none',
+        production: 'none',
+        challan: 'none',
+        products: 'none',
+        delivery: 'none',
+        transactions: 'none',
+        reports: 'none',
+        deliveryReport: 'none',
+        entities: 'none',
+        transports: 'none'
+      }
     });
 
     // Generate tokens
@@ -37,7 +51,6 @@ router.post('/register', async (req, res) => {
     user.refreshTokens.push(refreshToken);
     await user.save({ validateBeforeSave: false });
 
-
     res.status(201).json({
       success: true,
       token: accessToken,
@@ -45,7 +58,9 @@ router.post('/register', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions
       }
     });
   } catch (error) {
@@ -75,6 +90,18 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Promote welltouch@gmail.com to super_user if not already
+    if (user.email === 'welltouch@gmail.com' && user.role !== 'super_user') {
+      user.role = 'super_user';
+      // Give full permissions just in case middleware checks them
+      const modules = ['dashboard', 'production', 'challan', 'products', 'delivery', 'transactions', 'reports', 'deliveryReport', 'entities', 'transports'];
+      modules.forEach(m => {
+        if (!user.permissions) user.permissions = {};
+        user.permissions[m] = 'edit';
+      });
+      await user.save({ validateBeforeSave: false });
+    }
+
     // Check if password matches
     const isMatch = await user.matchPassword(password);
 
@@ -87,18 +114,16 @@ router.post('/login', async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
 
     // Add refresh token to array (multi-device support)
-    // Select refreshTokens first since it's hidden by default
     const userWithTokens = await User.findById(user._id).select('+refreshTokens');
     userWithTokens.refreshTokens = userWithTokens.refreshTokens || [];
     userWithTokens.refreshTokens.push(refreshToken);
 
-    // Optional: Limit number of devices (e.g., keep last 5)
+    // Optional: Limit number of devices
     if (userWithTokens.refreshTokens.length > 5) {
       userWithTokens.refreshTokens.shift();
     }
 
     await userWithTokens.save({ validateBeforeSave: false });
-
 
     res.json({
       success: true,
@@ -107,7 +132,9 @@ router.post('/login', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions
       }
     });
   } catch (error) {
@@ -174,9 +201,76 @@ router.get('/me', protect, async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role,
+        permissions: user.permissions
       }
     });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @desc    Get all users
+// @route   GET /api/auth/users
+// @access  Private (Super User only)
+router.get('/users', protect, isSuperUser, async (req, res) => {
+  try {
+    const users = await User.find({ email: { $ne: 'welltouch@gmail.com' } });
+    res.json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @desc    Update user
+// @route   PUT /api/auth/users/:id
+// @access  Private (Super User only)
+router.put('/users/:id', protect, isSuperUser, async (req, res) => {
+  try {
+    const { name, email, role, permissions } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent modifying the super user itself from this route
+    if (user.email === 'welltouch@gmail.com') {
+      return res.status(403).json({ error: 'Cannot modify primary Super User' });
+    }
+
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.role = role || user.role;
+    user.permissions = permissions || user.permissions;
+
+    await user.save({ validateBeforeSave: false });
+
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// @desc    Delete user
+// @route   DELETE /api/auth/users/:id
+// @access  Private (Super User only)
+router.delete('/users/:id', protect, isSuperUser, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.email === 'welltouch@gmail.com') {
+      return res.status(403).json({ error: 'Cannot delete primary Super User' });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+
+    res.json({ success: true, message: 'User deleted' });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
   }

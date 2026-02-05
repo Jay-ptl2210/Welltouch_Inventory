@@ -27,7 +27,7 @@ const toPcs = (quantity, unit, productLike) => {
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const products = await Product.find({ user: req.user._id })
+    const products = await Product.find({})
       .populate('party', 'name')
       .sort({ quantity: -1, createdAt: -1 });
     res.json(products);
@@ -41,10 +41,7 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.get('/:id', protect, async (req, res) => {
   try {
-    const product = await Product.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    });
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -96,8 +93,7 @@ router.post('/', protect, async (req, res) => {
       size,
       type,
       weight: Number(weight) || 0,
-      party: party || undefined,
-      user: req.user._id
+      party: party || undefined
     }).populate('party', 'name');
 
     console.log('[Add Product] Existing product found:', existingProduct ? 'YES' : 'NO');
@@ -176,10 +172,7 @@ router.put('/:id', protect, async (req, res) => {
       weight
     } = req.body;
 
-    const product = await Product.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    });
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -244,7 +237,7 @@ router.put('/:id', protect, async (req, res) => {
       const updatedProduct = await Product.findById(product._id).populate('party', 'name');
 
       await Transaction.updateMany(
-        { product: product._id, user: req.user._id },
+        { product: product._id },
         {
           $set: {
             productName: updatedProduct.name,
@@ -272,10 +265,7 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Private
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const product = await Product.findOneAndDelete({
-      _id: req.params.id,
-      user: req.user._id
-    });
+    const product = await Product.findByIdAndDelete(req.params.id);
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });

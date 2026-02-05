@@ -74,6 +74,10 @@ export const refreshToken = (refreshToken) => api.post('/auth/refresh', { refres
 export const logout = (refreshToken) => api.post('/auth/logout', { refreshToken });
 
 export const getCurrentUser = () => api.get('/auth/me');
+export const getUsers = () => api.get('/auth/users');
+export const updateUser = (id, data) => api.put(`/auth/users/${id}`, data);
+export const deleteUser = (id) => api.delete(`/auth/users/${id}`);
+export const createUser = (data) => api.post('/auth/register', data);
 
 // Products API
 export const getProducts = () => api.get('/products');

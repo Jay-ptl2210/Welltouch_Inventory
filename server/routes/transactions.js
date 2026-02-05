@@ -31,7 +31,7 @@ router.get('/', protect, async (req, res) => {
       return res.status(401).json({ error: 'User not authenticated' });
     }
 
-    const transactions = await Transaction.find({ user: req.user._id })
+    const transactions = await Transaction.find({})
       .populate({
         path: 'product',
         select: 'name size weight',
@@ -79,10 +79,7 @@ router.post('/', protect, async (req, res) => {
     }
 
     // Find the product
-    const product = await Product.findOne({
-      _id: productId,
-      user: req.user._id
-    }).populate('party', 'name');
+    const product = await Product.findById(productId).populate('party', 'name');
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found' });
@@ -146,20 +143,14 @@ router.put('/:id', protect, async (req, res) => {
   try {
     const { productId, productName, size, type, quantity, unit = 'pcs', date, note } = req.body;
 
-    const transaction = await Transaction.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    });
+    const transaction = await Transaction.findById(req.params.id);
 
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
     // Find the original product affected by this transaction
-    const originalProduct = await Product.findOne({
-      _id: transaction.product,
-      user: req.user._id
-    });
+    const originalProduct = await Product.findById(transaction.product);
 
     if (!originalProduct) {
       return res.status(404).json({ error: 'Original product not found for this transaction' });
@@ -181,10 +172,7 @@ router.put('/:id', protect, async (req, res) => {
     // Determine the new product (can be same or different)
     const targetProductId = productId || transaction.product.toString();
 
-    const newProduct = await Product.findOne({
-      _id: targetProductId,
-      user: req.user._id
-    }).populate('party', 'name');
+    const newProduct = await Product.findById(targetProductId).populate('party', 'name');
 
     if (!newProduct) {
       return res.status(404).json({ error: 'Target product not found' });
@@ -262,19 +250,13 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Private
 router.delete('/:id', protect, async (req, res) => {
   try {
-    const transaction = await Transaction.findOne({
-      _id: req.params.id,
-      user: req.user._id
-    });
+    const transaction = await Transaction.findById(req.params.id);
 
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    const product = await Product.findOne({
-      _id: transaction.product,
-      user: req.user._id
-    });
+    const product = await Product.findById(transaction.product);
 
     if (!product) {
       return res.status(404).json({ error: 'Product not found for this transaction' });
@@ -313,7 +295,6 @@ router.delete('/challan/:challanNumber', protect, async (req, res) => {
 
     // Find all transactions with this challan number in the note field
     const transactions = await Transaction.find({
-      user: req.user._id,
       note: { $regex: `Challan No# ${challanNumber}`, $options: 'i' }
     });
 
@@ -323,10 +304,7 @@ router.delete('/challan/:challanNumber', protect, async (req, res) => {
 
     // Revert stock for each transaction
     for (const transaction of transactions) {
-      const product = await Product.findOne({
-        _id: transaction.product,
-        user: req.user._id
-      });
+      const product = await Product.findById(transaction.product);
 
       if (product) {
         // Revert the transaction effect on stock
@@ -346,7 +324,6 @@ router.delete('/challan/:challanNumber', protect, async (req, res) => {
 
     // Delete all transactions
     const deleteResult = await Transaction.deleteMany({
-      user: req.user._id,
       note: { $regex: `Challan No# ${challanNumber}`, $options: 'i' }
     });
 

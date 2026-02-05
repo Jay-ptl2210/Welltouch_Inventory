@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { getTransports, addTransport, updateTransport, deleteTransport } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function ManageTransports() {
+    const { user } = useAuth();
     const [transports, setTransports] = useState([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
+
+    const isEditable = user?.role === 'super_user' || user?.permissions?.transports === 'edit';
     const [showModal, setShowModal] = useState(false);
     const [editingTransport, setEditingTransport] = useState(null);
     const [formData, setFormData] = useState({
@@ -122,13 +126,15 @@ function ManageTransports() {
                         <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px] mt-1">Manage Fleet & Logistics Agencies</p>
                     </div>
                 </div>
-                <button
-                    onClick={() => openModal()}
-                    className="bg-sky-600 hover:bg-sky-700 text-white font-black py-4 px-8 rounded-2xl shadow-xl shadow-sky-600/20 transition-all flex items-center gap-3 active:scale-95"
-                >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                    ADD TRANSPORT
-                </button>
+                {isEditable && (
+                    <button
+                        onClick={() => openModal()}
+                        className="bg-sky-600 hover:bg-sky-700 text-white font-black py-4 px-8 rounded-2xl shadow-xl shadow-sky-600/20 transition-all flex items-center gap-3 active:scale-95"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                        ADD TRANSPORT
+                    </button>
+                )}
             </div>
 
             {loading && transports.length === 0 ? (
@@ -144,14 +150,16 @@ function ManageTransports() {
                                     <p className="text-sky-500 text-[10px] font-black uppercase tracking-widest">Agency Name</p>
                                     <h3 className="text-2xl font-black text-slate-800 leading-tight">{t.name}</h3>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => openModal(t)} className="p-2 text-slate-300 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-all">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <button onClick={() => handleDelete(t._id)} className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                </div>
+                                {isEditable && (
+                                    <div className="flex gap-2">
+                                        <button onClick={() => openModal(t)} className="p-2 text-slate-300 hover:text-sky-600 hover:bg-sky-50 rounded-xl transition-all">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        </button>
+                                        <button onClick={() => handleDelete(t._id)} className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="space-y-3">
@@ -177,7 +185,7 @@ function ManageTransports() {
                                     <svg className="w-10 h-10 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1" /></svg>
                                 </div>
                                 <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Your fleet registry is empty</p>
-                                <button onClick={() => openModal()} className="text-sky-600 font-black text-sm hover:underline">Start by adding your first transport agency</button>
+                                {isEditable && <button onClick={() => openModal()} className="text-sky-600 font-black text-sm hover:underline">Start by adding your first transport agency</button>}
                             </div>
                         </div>
                     )}
@@ -205,9 +213,10 @@ function ManageTransports() {
                                 <input
                                     type="text"
                                     required
+                                    disabled={!isEditable}
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 outline-none font-bold text-slate-700 transition-all"
+                                    className={`w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 outline-none font-bold text-slate-700 transition-all ${!isEditable ? 'cursor-not-allowed opacity-60' : ''}`}
                                     placeholder="Ex: Shree Maruti Courier, Professional Transport"
                                 />
                             </div>
@@ -217,32 +226,37 @@ function ManageTransports() {
                                 <div className="flex gap-3">
                                     <input
                                         type="text"
+                                        disabled={!isEditable}
                                         value={formData.vehicleInput}
                                         onChange={e => setFormData({ ...formData, vehicleInput: e.target.value })}
-                                        className="flex-1 px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 outline-none font-black text-slate-700 transition-all placeholder:font-bold"
+                                        className={`flex-1 px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-sky-500/10 focus:border-sky-500 outline-none font-black text-slate-700 transition-all placeholder:font-bold ${!isEditable ? 'cursor-not-allowed opacity-60' : ''}`}
                                         placeholder="Enter Vehicle No. (GJ-XX-XXXX)"
                                         onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddVehicle())}
                                     />
-                                    <button
-                                        type="button"
-                                        onClick={handleAddVehicle}
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 rounded-2xl shadow-lg transition-all active:scale-95"
-                                    >
-                                        ADD
-                                    </button>
+                                    {isEditable && (
+                                        <button
+                                            type="button"
+                                            onClick={handleAddVehicle}
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 rounded-2xl shadow-lg transition-all active:scale-95"
+                                        >
+                                            ADD
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100 min-h-[80px]">
                                     {formData.vehicles.map((v, i) => (
                                         <div key={i} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm animate-in fade-in slide-in-from-left-2 transition-all hover:border-red-200 group">
                                             <span className="text-[10px] font-black text-slate-700">{v}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => removeVehicle(v)}
-                                                className="text-slate-300 hover:text-red-500 transition-colors"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                                            </button>
+                                            {isEditable && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeVehicle(v)}
+                                                    className="text-slate-300 hover:text-red-500 transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
                                     {formData.vehicles.length === 0 && (

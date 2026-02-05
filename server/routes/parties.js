@@ -9,7 +9,7 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/', protect, async (req, res) => {
     try {
-        const parties = await Party.find({ user: req.user._id }).sort({ name: 1 });
+        const parties = await Party.find({}).sort({ name: 1 });
         res.json(parties);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch parties' });
@@ -50,7 +50,7 @@ router.post('/', protect, async (req, res) => {
 router.put('/:id', protect, async (req, res) => {
     try {
         const { name, gst, phone, address, isBoth } = req.body;
-        const party = await Party.findOne({ _id: req.params.id, user: req.user._id });
+        const party = await Party.findById(req.params.id);
 
         if (!party) {
             return res.status(404).json({ error: 'Party not found' });
@@ -80,15 +80,12 @@ router.delete('/:id', protect, async (req, res) => {
         const partyId = req.params.id;
 
         // Check if any products are associated with this party
-        const productCount = await Product.countDocuments({ party: partyId, user: req.user._id });
+        const productCount = await Product.countDocuments({ party: partyId });
         if (productCount > 0) {
             return res.status(400).json({ error: 'Cannot delete party associated with products' });
         }
 
-        const party = await Party.findOneAndDelete({
-            _id: partyId,
-            user: req.user._id
-        });
+        const party = await Party.findByIdAndDelete(partyId);
 
         if (!party) {
             return res.status(404).json({ error: 'Party not found' });

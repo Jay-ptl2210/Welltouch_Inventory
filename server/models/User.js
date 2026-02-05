@@ -24,6 +24,23 @@ const userSchema = new mongoose.Schema({
     minlength: [6, 'Password must be at least 6 characters'],
     select: false
   },
+  role: {
+    type: String,
+    enum: ['super_user', 'admin', 'user'],
+    default: 'user'
+  },
+  permissions: {
+    dashboard: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    production: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    challan: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    products: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    delivery: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    transactions: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    reports: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    deliveryReport: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    entities: { type: String, enum: ['none', 'view', 'edit'], default: 'none' },
+    transports: { type: String, enum: ['none', 'view', 'edit'], default: 'none' }
+  },
   refreshTokens: {
     type: [String],
     select: false

@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { getProducts, addTransaction, updateTransaction, getTransactions, deleteTransaction, getParties } from '../services/api';
 import Pagination from '../components/Pagination';
 import { format } from 'date-fns';
+import { useAuth } from '../context/AuthContext';
 import { toPcs, fromPcs } from '../utils/calculations';
 
 function Output() {
+    const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [transactions, setTransactions] = useState([]);
     const [parties, setParties] = useState([]);
@@ -13,6 +15,8 @@ function Output() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 10;
     const [editingTransaction, setEditingTransaction] = useState(null);
+
+    const isEditable = user?.role === 'super_user' || user?.permissions?.challan === 'edit';
 
     const [formData, setFormData] = useState({
         partyId: '',
@@ -181,9 +185,10 @@ function Output() {
                         <select
                             name="partyId"
                             required
+                            disabled={!isEditable}
                             value={formData.partyId}
                             onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white"
+                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white ${!isEditable ? 'bg-gray-50 cursor-not-allowed text-gray-400' : ''}`}
                         >
                             <option value="">Select a party</option>
                             {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => (
@@ -199,8 +204,8 @@ function Output() {
                             required
                             value={formData.productId}
                             onChange={handleFormChange}
-                            disabled={!formData.partyId}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                            disabled={!formData.partyId || !isEditable}
+                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white disabled:bg-gray-50 disabled:text-gray-400 ${!isEditable ? 'cursor-not-allowed' : ''}`}
                         >
                             <option value="">{formData.partyId ? 'Select a product' : 'Select a party first'}</option>
                             {products
@@ -219,9 +224,10 @@ function Output() {
                         <select
                             name="unit"
                             required
+                            disabled={!isEditable}
                             value={formData.unit}
                             onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white"
+                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 bg-white ${!isEditable ? 'bg-gray-50 cursor-not-allowed text-gray-400' : ''}`}
                         >
                             <option value="packet">Packets</option>
                             <option value="linear">Linear</option>
@@ -237,11 +243,12 @@ function Output() {
                             type="number"
                             name="quantity"
                             required
+                            disabled={!isEditable}
                             step="0.01"
                             min="0"
                             value={formData.quantity}
                             onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700"
+                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 ${!isEditable ? 'bg-gray-50 cursor-not-allowed text-gray-400' : ''}`}
                             placeholder="Amount"
                         />
                     </div>
@@ -251,9 +258,10 @@ function Output() {
                         <input
                             type="date"
                             name="date"
+                            disabled={!isEditable}
                             value={formData.date}
                             onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700"
+                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 ${!isEditable ? 'bg-gray-50 cursor-not-allowed text-gray-400' : ''}`}
                         />
                     </div>
 
@@ -262,22 +270,25 @@ function Output() {
                         <input
                             type="text"
                             name="note"
+                            disabled={!isEditable}
                             value={formData.note}
                             onChange={handleFormChange}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700"
+                            className={`w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none font-medium text-gray-700 ${!isEditable ? 'bg-gray-50 cursor-not-allowed text-gray-400' : ''}`}
                             placeholder="Recipient or other info..."
                         />
                     </div>
 
                     <div className="md:col-span-2 lg:col-span-1 flex items-end">
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className={`w-full ${editingTransaction ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50`}
-                        >
-                            {loading ? 'Processing...' : editingTransaction ? 'Update Delivery' : 'Record Delivery'}
-                        </button>
-                        {editingTransaction && (
+                        {isEditable && (
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className={`w-full ${editingTransaction ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-red-600 hover:bg-red-700'} text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50`}
+                            >
+                                {loading ? 'Processing...' : editingTransaction ? 'Update Delivery' : 'Record Delivery'}
+                            </button>
+                        )}
+                        {editingTransaction && isEditable && (
                             <button
                                 type="button"
                                 onClick={() => {
@@ -317,7 +328,7 @@ function Output() {
                                 <th className="px-6 py-4 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Type</th>
                                 <th className="px-6 py-4 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Quantity</th>
                                 <th className="px-6 py-4 text-left text-[11px] font-black text-gray-400 uppercase tracking-widest">Note</th>
-                                <th className="px-6 py-4 text-right text-[11px] font-black text-gray-400 uppercase tracking-widest">Action</th>
+                                {isEditable && <th className="px-6 py-4 text-right text-[11px] font-black text-gray-400 uppercase tracking-widest">Action</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -336,14 +347,16 @@ function Output() {
                                         })()}
                                     </td>
                                     <td className="px-6 py-4 text-xs text-gray-400 italic line-clamp-1">{t.note || '-'}</td>
-                                    <td className="px-6 py-4 text-right flex justify-end gap-2">
-                                        <button onClick={() => handleEdit(t)} className="p-2 text-indigo-400 hover:text-indigo-600 transition-colors" title="Edit">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                        </button>
-                                        <button onClick={() => handleDelete(t._id)} className="p-2 text-red-400 hover:text-red-600 transition-colors" title="Delete">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </td>
+                                    {isEditable && (
+                                        <td className="px-6 py-4 text-right flex justify-end gap-2">
+                                            <button onClick={() => handleEdit(t)} className="p-2 text-indigo-400 hover:text-indigo-600 transition-colors" title="Edit">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                            </button>
+                                            <button onClick={() => handleDelete(t._id)} className="p-2 text-red-400 hover:text-red-600 transition-colors" title="Delete">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>

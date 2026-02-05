@@ -11,7 +11,7 @@ const { protect } = require('../middleware/auth');
 router.post('/', protect, async (req, res) => {
     try {
         // Generate sequential challan number
-        const lastChallan = await Challan.findOne({ user: req.user.id }).sort({ createdAt: -1 });
+        const lastChallan = await Challan.findOne({}).sort({ createdAt: -1 });
         let nextNumber = 1;
 
         if (lastChallan && lastChallan.challanNumber) {
@@ -39,7 +39,7 @@ router.post('/', protect, async (req, res) => {
 // @access  Private
 router.get('/', protect, async (req, res) => {
     try {
-        const challans = await Challan.find({ user: req.user.id })
+        const challans = await Challan.find({})
             .sort({ createdAt: -1 });
 
         // Robust manual population for Both-Party support
@@ -82,7 +82,7 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.put('/:id', protect, async (req, res) => {
     try {
-        const challan = await Challan.findOne({ _id: req.params.id, user: req.user.id });
+        const challan = await Challan.findById(req.params.id);
 
         if (!challan) {
             return res.status(404).json({ success: false, error: 'Challan not found' });
@@ -105,7 +105,7 @@ router.put('/:id', protect, async (req, res) => {
 // @access  Private
 router.delete('/:id', protect, async (req, res) => {
     try {
-        const challan = await Challan.findOne({ _id: req.params.id, user: req.user.id });
+        const challan = await Challan.findById(req.params.id);
         if (!challan) {
             return res.status(404).json({ success: false, error: 'Challan not found' });
         }

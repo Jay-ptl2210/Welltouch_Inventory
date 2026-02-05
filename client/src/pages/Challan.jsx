@@ -6,8 +6,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logo from '../assets/logo.png';
 import Pagination from '../components/Pagination';
+import { useAuth } from '../context/AuthContext';
 
 function Challan() {
+    const { user } = useAuth();
     const [products, setProducts] = useState([]);
     const [parties, setParties] = useState([]);
     const [customers, setCustomers] = useState([]);
@@ -18,6 +20,8 @@ function Challan() {
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 8;
     const [editingChallan, setEditingChallan] = useState(null);
+
+    const isEditable = user?.role === 'super_user' || user?.permissions?.challan === 'edit';
 
     const [headerData, setHeaderData] = useState({
         customerId: '',
@@ -696,9 +700,10 @@ function Challan() {
                             <select
                                 name="customerId"
                                 required
+                                disabled={!isEditable}
                                 value={headerData.customerId}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                             >
                                 <option value="">Select Customer</option>
                                 {customers.slice().sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
@@ -710,18 +715,20 @@ function Challan() {
                                 type="date"
                                 name="date"
                                 required
+                                disabled={!isEditable}
                                 value={headerData.date}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                             />
                         </div>
                         <div>
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Transport Name</label>
                             <select
                                 name="transport"
+                                disabled={!isEditable}
                                 value={headerData.transport}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                             >
                                 <option value="">Select Transport</option>
                                 {transports.slice().sort((a, b) => a.name.localeCompare(b.name)).map(t => <option key={t._id} value={t.name}>{t.name}</option>)}
@@ -731,9 +738,10 @@ function Challan() {
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Vehicle Number</label>
                             <select
                                 name="vehicleNumber"
+                                disabled={!isEditable}
                                 value={headerData.vehicleNumber}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all appearance-none cursor-pointer ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                             >
                                 <option value="">Select Vehicle</option>
                                 {transports.find(t => t.name === headerData.transport)?.vehicles?.map((v, i) => (
@@ -747,9 +755,10 @@ function Challan() {
                             <input
                                 type="text"
                                 name="dispatchThrough"
+                                disabled={!isEditable}
                                 value={headerData.dispatchThrough || ''}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                                 placeholder="By Road"
                             />
                         </div>
@@ -758,9 +767,10 @@ function Challan() {
                             <input
                                 type="text"
                                 name="termsOfDelivery"
+                                disabled={!isEditable}
                                 value={headerData.termsOfDelivery || ''}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                                 placeholder="Ex: FOB, CIF, etc."
                             />
                         </div>
@@ -769,9 +779,10 @@ function Challan() {
                             <input
                                 type="text"
                                 name="destination"
+                                disabled={!isEditable}
                                 value={headerData.destination || ''}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                                 placeholder="City / Delivery Point"
                             />
                         </div>
@@ -779,9 +790,10 @@ function Challan() {
                             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 ml-1">Notes</label>
                             <textarea
                                 name="notes"
+                                disabled={!isEditable}
                                 value={headerData.notes || ''}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all h-24"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all h-24 ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                                 placeholder="Any additional notes..."
                             />
                         </div>
@@ -829,9 +841,10 @@ function Challan() {
                             <input
                                 type="text"
                                 name="shipAddress"
+                                disabled={!isEditable}
                                 value={headerData.shipAddress}
                                 onChange={handleHeaderChange}
-                                className="w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all"
+                                className={`w-full px-5 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-primary-500/10 focus:border-primary-500 outline-none font-bold text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                                 placeholder="Delivery location"
                             />
                         </div>
@@ -849,9 +862,10 @@ function Challan() {
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Party</label>
                                 <select
                                     name="partyId"
+                                    disabled={!isEditable}
                                     value={currentItem.partyId}
                                     onChange={handleCurrentItemChange}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
+                                    className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-300' : ''}`}
                                 >
                                     <option value="">Select a party</option>
                                     {parties.slice().sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
@@ -863,8 +877,8 @@ function Challan() {
                                     name="productId"
                                     value={currentItem.productId}
                                     onChange={handleCurrentItemChange}
-                                    disabled={!currentItem.partyId}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all disabled:bg-slate-50 disabled:text-slate-300"
+                                    disabled={!currentItem.partyId || !isEditable}
+                                    className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all disabled:bg-slate-50 disabled:text-slate-300 ${!isEditable ? 'cursor-not-allowed' : ''}`}
                                 >
                                     <option value="">{currentItem.partyId ? 'Select a product' : 'Select a party first'}</option>
                                     {products
@@ -881,9 +895,10 @@ function Challan() {
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Unit</label>
                                 <select
                                     name="unit"
+                                    disabled={!isEditable}
                                     value={currentItem.unit}
                                     onChange={handleCurrentItemChange}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
+                                    className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-300' : ''}`}
                                 >
                                     <option value="packet">Packets</option>
                                     <option value="linear">Linear</option>
@@ -897,11 +912,12 @@ function Challan() {
                                 <input
                                     type="number"
                                     name="quantity"
+                                    disabled={!isEditable}
                                     step="0.01"
                                     value={currentItem.quantity}
                                     onChange={handleCurrentItemChange}
                                     placeholder="Amount"
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
+                                    className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                                 />
                             </div>
                             <div>
@@ -909,19 +925,22 @@ function Challan() {
                                 <input
                                     type="date"
                                     name="date"
+                                    disabled={!isEditable}
                                     value={currentItem.date}
                                     onChange={handleCurrentItemChange}
-                                    className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all"
+                                    className={`w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none font-bold text-sm text-slate-700 shadow-sm transition-all ${!isEditable ? 'bg-slate-50 cursor-not-allowed text-slate-400' : ''}`}
                                 />
                             </div>
                             <div className="lg:col-span-2">
-                                <button
-                                    type="button"
-                                    onClick={addItem}
-                                    className="w-full bg-red-600 border-2 border-red-600 text-white hover:bg-white hover:text-red-700 font-black text-xs uppercase tracking-widest py-[14.5px] rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/25"
-                                >
-                                    Record Delivery
-                                </button>
+                                {isEditable && (
+                                    <button
+                                        type="button"
+                                        onClick={addItem}
+                                        className="w-full bg-red-600 border-2 border-red-600 text-white hover:bg-white hover:text-red-700 font-black text-xs uppercase tracking-widest py-[14.5px] rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/25"
+                                    >
+                                        Record Delivery
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -940,7 +959,7 @@ function Challan() {
                                             <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Product</th>
                                             <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Qty</th>
                                             <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Pcs</th>
-                                            <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                            {isEditable && <th className="px-6 py-4 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>}
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-slate-50">
@@ -956,15 +975,17 @@ function Challan() {
                                                 <td className="px-6 py-4 text-right font-black text-primary-600 text-sm">
                                                     {item.qtyPcs.toFixed(1)}
                                                 </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => removeItem(index)}
-                                                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                                    </button>
-                                                </td>
+                                                {isEditable && (
+                                                    <td className="px-6 py-4 text-center">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeItem(index)}
+                                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                        </button>
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </tbody>
@@ -978,24 +999,26 @@ function Challan() {
                             <svg className="w-5 h-5 text-orange-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1-11v6h2v-6h-2zm0-4v2h2V7h-2z" /></svg>
                             Stock will be automatically deducted upon generation
                         </div>
-                        <button
-                            type="button"
-                            onClick={handleSubmit}
-                            disabled={loading || items.length === 0}
-                            className="w-full md:w-auto bg-primary-600 hover:bg-primary-700 text-white font-black text-sm uppercase tracking-widest py-5 px-12 rounded-2xl shadow-[0_20px_40px_-15px_rgba(37,99,235,0.4)] hover:shadow-[0_25px_50px_-12px_rgba(37,99,235,0.5)] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                        >
-                            {loading ? (
-                                <>
-                                    <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16l-5-5h3V4h4v7h3l-5 5zM5 18h14v2H5v-2z" /></svg>
-                                    {editingChallan ? 'Update & Re-generate PDF' : 'Generate & Save Challan'}
-                                </>
-                            )}
-                        </button>
+                        {isEditable && (
+                            <button
+                                type="button"
+                                onClick={handleSubmit}
+                                disabled={loading || items.length === 0}
+                                className="w-full md:w-auto bg-primary-600 hover:bg-primary-700 text-white font-black text-sm uppercase tracking-widest py-5 px-12 rounded-2xl shadow-[0_20px_40px_-15px_rgba(37,99,235,0.4)] hover:shadow-[0_25px_50px_-12px_rgba(37,99,235,0.5)] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                            >
+                                {loading ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16l-5-5h3V4h4v7h3l-5 5zM5 18h14v2H5v-2z" /></svg>
+                                        {editingChallan ? 'Update & Re-generate PDF' : 'Generate & Save Challan'}
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -1046,20 +1069,24 @@ function Challan() {
                                             >
                                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 16l-5-5h3V4h4v7h3l-5 5zM5 18h14v2H5v-2z" /></svg>
                                             </button>
-                                            <button
-                                                onClick={() => handleEdit(c)}
-                                                className="p-3 bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm rounded-xl transition-all"
-                                                title="Edit Record"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(c._id)}
-                                                className="p-3 bg-white border border-slate-100 text-slate-200 hover:text-red-500 hover:border-red-100 hover:shadow-sm rounded-xl transition-all"
-                                                title="Delete Record"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+                                            {isEditable && (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleEdit(c)}
+                                                        className="p-3 bg-white border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm rounded-xl transition-all"
+                                                        title="Edit Record"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(c._id)}
+                                                        className="p-3 bg-white border border-slate-100 text-slate-200 hover:text-red-500 hover:border-red-100 hover:shadow-sm rounded-xl transition-all"
+                                                        title="Delete Record"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>

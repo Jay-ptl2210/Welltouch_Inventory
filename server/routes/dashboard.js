@@ -8,7 +8,7 @@ const { protect } = require('../middleware/auth');
 // @access  Private
 router.get('/', protect, async (req, res) => {
   try {
-    const products = await Product.find({ user: req.user._id }).populate('party', 'name');
+    const products = await Product.find({}).populate('party', 'name');
 
     // Group products by name and size
     const dashboardMap = {};
