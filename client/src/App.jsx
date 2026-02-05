@@ -338,6 +338,18 @@ function Navigation() {
               >
                 Transport
               </Link>
+              {user?.role === 'super_user' && (
+                <Link
+                  to="/users"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/users')
+                    ? 'bg-primary-600 text-white'
+                    : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
+                    }`}
+                >
+                  Users
+                </Link>
+              )}
               <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
                 {user?.email}
               </div>
