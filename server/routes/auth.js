@@ -90,8 +90,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Promote welltouch@gmail.com to super_user if not already
-    if (user.email === 'welltouch@gmail.com' && user.role !== 'super_user') {
+    // Promote admin@welltouch.com to super_user if not already
+    if (user.email === 'admin@welltouch.com' && user.role !== 'super_user') {
       user.role = 'super_user';
       // Give full permissions just in case middleware checks them
       const modules = ['dashboard', 'production', 'challan', 'products', 'delivery', 'transactions', 'reports', 'deliveryReport', 'entities', 'transports'];
@@ -216,7 +216,7 @@ router.get('/me', protect, async (req, res) => {
 // @access  Private (Super User only)
 router.get('/users', protect, isSuperUser, async (req, res) => {
   try {
-    const users = await User.find({ email: { $ne: 'welltouch@gmail.com' } });
+    const users = await User.find({ email: { $ne: 'admin@welltouch.com' } });
     res.json({ success: true, users });
   } catch (error) {
     res.status(500).json({ error: 'Server error' });
@@ -228,7 +228,7 @@ router.get('/users', protect, isSuperUser, async (req, res) => {
 // @access  Private (Super User only)
 router.put('/users/:id', protect, isSuperUser, async (req, res) => {
   try {
-    const { name, email, role, permissions } = req.body;
+    const { name, email, role, permissions, password } = req.body;
     const user = await User.findById(req.params.id);
 
     if (!user) {
@@ -236,7 +236,7 @@ router.put('/users/:id', protect, isSuperUser, async (req, res) => {
     }
 
     // Prevent modifying the super user itself from this route
-    if (user.email === 'welltouch@gmail.com') {
+    if (user.email === 'admin@welltouch.com') {
       return res.status(403).json({ error: 'Cannot modify primary Super User' });
     }
 
@@ -245,7 +245,12 @@ router.put('/users/:id', protect, isSuperUser, async (req, res) => {
     user.role = role || user.role;
     user.permissions = permissions || user.permissions;
 
-    await user.save({ validateBeforeSave: false });
+    // Update password if provided
+    if (password && password.trim() !== '') {
+      user.password = password;
+    }
+
+    await user.save();
 
     res.json({ success: true, user });
   } catch (error) {
@@ -264,7 +269,7 @@ router.delete('/users/:id', protect, isSuperUser, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    if (user.email === 'welltouch@gmail.com') {
+    if (user.email === 'admin@welltouch.com') {
       return res.status(403).json({ error: 'Cannot delete primary Super User' });
     }
 

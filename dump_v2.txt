@@ -1,6 +1,0 @@
-﻿Connected to MongoDB
---- PRODUCTS ---
-ID: 695f8d3db6a0d211cf2c73b2, Name: "Confortime", Size: "320 mm", Type: "ST", Qty: 19500, Prev: 31500, User: 695f89b95fe96343c416224f
-ID: 695f8d58b6a0d211cf2c73b8, Name: "Confortime", Size: "320 mm", Type: "TF", Qty: 12000, Prev: 24000, User: 695f89b95fe96343c416224f
---- TRANSACTIONS ---
-ID: 695f8d8fb6a0d211cf2c73cd, ProdRef: 695f8d58b6a0d211cf2c73b8, ProdName: "Confortime", Size: "320 mm", ProdType: "ST", Type: "delivered", Qty: 40, Pcs: 12000, Date: Thu Jan 08 2026 05:30:00 GMT+0530 (India Standard Time), User: 695f89b95fe96343c416224f
