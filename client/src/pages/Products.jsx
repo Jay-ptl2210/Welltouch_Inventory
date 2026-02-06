@@ -360,6 +360,14 @@ function Products() {
                             <div className="space-y-2">
                               <input
                                 type="text"
+                                name="size"
+                                value={editForm.size}
+                                onChange={handleEditChange}
+                                placeholder="Size"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500 text-sm mb-2"
+                              />
+                              <input
+                                type="text"
                                 name="type"
                                 value={editForm.type}
                                 onChange={handleEditChange}
@@ -371,7 +379,8 @@ function Products() {
                               <span className="text-sm text-gray-700">{product.size}</span>
                               <span className="text-xs text-primary-600 font-medium">{product.type}</span>
                             </div>
-                          )}
+                          )
+                          }
                         </td>
                         <td className="px-6 py-4">
                           {isEditing ? (

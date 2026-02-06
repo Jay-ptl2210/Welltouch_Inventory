@@ -362,8 +362,15 @@ function Challan() {
 
             const pkPerLin = item.packetsPerLinear || p?.packetsPerLinear || 0;
             const pcsPerPk = item.pcsPerPacket || p?.pcsPerPacket || 0;
+            const pcsPerLin = pkPerLin * pcsPerPk;
 
-            const conversionInfo = pkPerLin > 0 ? `\n${pkPerLin} Pkt/Lin, ${pcsPerPk} Pcs/Pkt (Total ${pkPerLin * pcsPerPk} Pcs/Lin)` : '';
+            // Formatting: 
+            // Line 1: ProductName
+            // Line 2: Size + Type + "Sanitary Pad"
+            // Line 3: Pkt/Lin + Pcs/Pkt + Pcs/Lin
+            const detailLine2 = `${pSize} ${pType} Sanitary Pad`;
+            const detailLine3 = `${pkPerLin} Pkt/Lin, ${pcsPerPk} Pcs/Pkt (Total ${pcsPerLin} Pcs/Lin)`;
+            const fullDetails = `${pName}\n${detailLine2}\n${detailLine3}`;
 
             const pcs = item.quantityInPcs || (p ? toPcs(item.quantity, item.unit, p) : 0);
             const lin = item.unit === 'linear' ? item.quantity : (pkPerLin > 0 && pcsPerPk > 0 ? (pcs / (pkPerLin * pcsPerPk)) : 0);
@@ -375,8 +382,7 @@ function Challan() {
 
             return [
                 index + 1,
-                `${pName} (${pSize})${conversionInfo}`,
-                pType,
+                fullDetails,
                 Number(lin).toFixed(1),
                 Number(pkt).toFixed(1),
                 Number(pcs).toFixed(0)
@@ -385,7 +391,7 @@ function Challan() {
 
         // Add Totals Row
         tableData.push([
-            { content: 'TOTAL', colSpan: 3, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
+            { content: 'TOTAL', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } },
             { content: totalLin.toFixed(1), styles: { fontStyle: 'bold', fillColor: [240, 240, 240], halign: 'right' } },
             { content: totalPkt.toFixed(1), styles: { fontStyle: 'bold', fillColor: [240, 240, 240], halign: 'right' } },
             { content: totalPcs.toFixed(0), styles: { fontStyle: 'bold', fillColor: [240, 240, 240], halign: 'right' } }
@@ -393,7 +399,7 @@ function Challan() {
 
         autoTable(doc, {
             startY: tableStartY,
-            head: [['Sr.', 'Product Name', 'Type', 'Liners', 'Packets', 'Pieces']],
+            head: [['Sr.', 'Product Name', 'Liners', 'Packets', 'Pieces']],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [0, 173, 186], textColor: 255, halign: 'center', font: 'helvetica', fontStyle: 'bold', fontSize: 10 },
@@ -401,10 +407,9 @@ function Challan() {
             columnStyles: {
                 0: { cellWidth: 12, halign: 'center' },
                 1: { cellWidth: 'auto' },
-                2: { cellWidth: 25, halign: 'center' },
+                2: { halign: 'right', cellWidth: 25 },
                 3: { halign: 'right', cellWidth: 25 },
-                4: { halign: 'right', cellWidth: 25 },
-                5: { halign: 'right', cellWidth: 25 }
+                4: { halign: 'right', cellWidth: 25 }
             }
         });
 
