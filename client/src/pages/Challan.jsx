@@ -370,7 +370,7 @@ function Challan() {
             // Line 3: Pkt/Lin + Pcs/Pkt + Pcs/Lin
             const detailLine2 = `${pSize} ${pType} Sanitary Pad`;
             const detailLine3 = `${pkPerLin} Pkt/Lin, ${pcsPerPk} Pcs/Pkt (Total ${pcsPerLin} Pcs/Lin)`;
-            const fullDetails = `${pName}\n${detailLine2}\n${detailLine3}`;
+            const fullDetails = `${pName} (${item.productWeight || p?.weight || 0}gm)\n${detailLine2}\n${detailLine3}`;
 
             const pcs = item.quantityInPcs || (p ? toPcs(item.quantity, item.unit, p) : 0);
             const lin = item.unit === 'linear' ? item.quantity : (pkPerLin > 0 && pcsPerPk > 0 ? (pcs / (pkPerLin * pcsPerPk)) : 0);

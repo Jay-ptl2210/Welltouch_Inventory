@@ -184,7 +184,7 @@ function Reports() {
         doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 33);
 
         const tableData = reportData.map(item => [
-            item.product.name,
+            `${item.product.name} (${item.product.weight || 0}gm)`,
             item.product.type || 'N/A',
             item.product.size,
             (item.product.weight || 0) + 'gm',

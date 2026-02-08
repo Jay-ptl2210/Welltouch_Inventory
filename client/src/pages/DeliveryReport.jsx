@@ -67,7 +67,7 @@ function DeliveryReport() {
             const vNum = (c.vehicleNumber || 'N/A').trim();
             const dest = (c.destination || 'N/A').trim();
 
-            const itemSummary = c.items?.map(i => `${i.productName} (${i.quantityInPcs || i.quantity || 0} pcs)`).join(', ') || 'No Items';
+            const itemSummary = c.items?.map(i => `${i.productName} (${i.weight || i.productWeight || 0}gm) (${i.quantityInPcs || i.quantity || 0} pcs)`).join(', ') || 'No Items';
 
             const tripData = {
                 date: c.date,
