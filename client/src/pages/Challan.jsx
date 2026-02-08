@@ -458,16 +458,7 @@ function Challan() {
         if (!window.confirm(`Delete challan ${challanToDelete.challanNumber}? This will restore the stock for all items in this challan.`)) return;
 
         try {
-            // Delete associated transactions first (this restores stock)
-            if (challanToDelete.challanNumber) {
-                try {
-                    await deleteTransactionsByChallan(challanToDelete.challanNumber);
-                } catch (err) {
-                    console.warn('No transactions to delete or error:', err);
-                }
-            }
-
-            // Then delete the challan record
+            // Then delete the challan record (Backend now handles stock restoration)
             await deleteChallan(id);
             setMessage({ type: 'success', text: 'Challan deleted and stock restored' });
             loadInitialData();
@@ -584,16 +575,7 @@ function Challan() {
             let finalChallanData;
 
             if (editingChallan) {
-                const oldChallanNo = editingChallan.challanNumber;
-
-                // 1. Delete old transactions associated with this challan (reverts stock)
-                try {
-                    await deleteTransactionsByChallan(oldChallanNo);
-                } catch (err) {
-                    console.warn('No existing transactions to delete or error deleting:', err);
-                }
-
-                // 2. Update challan record
+                // Backend now handles stock reversal and transaction updates atomically
                 const res = await updateChallan(editingChallan._id, {
                     customer: headerData.customerId,
                     address: headerData.address,
@@ -612,17 +594,9 @@ function Challan() {
                     totalPieces: totalPcs
                 });
                 finalChallanData = res.data.data || res.data;
-
-                // 3. Create new transactions with updated data
-                const updatedTransactions = transactionsToSave.map(t => ({
-                    ...t,
-                    note: `Challan No# ${oldChallanNo} - Veh: ${headerData.vehicleNumber || 'N/A'}`
-                }));
-
-                await Promise.all(updatedTransactions.map(t => addTransaction(t)));
                 setMessage({ type: 'success', text: 'Challan updated and PDF generated!' });
             } else {
-                // 1. SAVE CHALLAN RECORD FIRST
+                // Backend now handles stock deduction and transaction creation atomically
                 const savedChallanRes = await saveChallan({
                     customer: headerData.customerId,
                     address: headerData.address,
@@ -642,15 +616,6 @@ function Challan() {
                 });
 
                 finalChallanData = savedChallanRes.data.data || savedChallanRes.data;
-                const generatedChallanNo = finalChallanData.challanNumber || 'N/A';
-
-                // 2. UPDATE NOTES AND SAVE TRANSACTIONS
-                const updatedTransactions = transactionsToSave.map(t => ({
-                    ...t,
-                    note: `Challan No# ${generatedChallanNo} - Veh: ${headerData.vehicleNumber || 'N/A'}`
-                }));
-
-                await Promise.all(updatedTransactions.map(t => addTransaction(t)));
                 setMessage({ type: 'success', text: 'Challan saved and PDF generated!' });
             }
 

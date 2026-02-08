@@ -230,15 +230,6 @@ function ManageProducts() {
     }
   };
 
-  const getLinearValue = (t) => {
-    const p = products.find(prod => prod._id === (t.product?._id || t.product));
-    if (p && p.packetsPerLinear > 0 && p.pcsPerPacket > 0) {
-      return fromPcs(t.quantityInPcs, 'linear', p);
-    }
-    // Fallback: if we can't find product or factors, try to convert from its own unit if linear
-    if (t.unit === 'linear') return t.quantity;
-    return null; // Signals we should show the original unit if we can't calculate linear
-  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-[1600px]">
@@ -643,11 +634,9 @@ function ManageProducts() {
                   <td className="px-8 py-6 whitespace-nowrap">
                     <div className={`text-sm font-extrabold ${t.type === 'produce' ? 'text-green-700' : 'text-red-700'}`}>
                       {(() => {
-                        const linear = getLinearValue(t);
-                        if (linear !== null) {
-                          return `${t.type === 'produce' ? '+' : '-'}${linear.toFixed(1)} LINEAR`;
-                        }
-                        return `${t.type === 'produce' ? '+' : '-'}${t.quantity.toFixed(1)} ${t.unit || 'pcs'}`;
+                        const val = Number(t.quantity) || 0;
+                        const unit = (t.unit || 'pcs').toUpperCase();
+                        return `${t.type === 'produce' ? '+' : '-'}${val.toLocaleString()} ${unit}`;
                       })()}
                     </div>
                   </td>

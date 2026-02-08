@@ -84,6 +84,7 @@ export const getProducts = () => api.get('/products');
 export const addProduct = (product) => api.post('/products', product);
 export const updateProduct = (id, product) => api.put(`/products/${id}`, product);
 export const deleteProduct = (id) => api.delete(`/products/${id}`);
+export const syncStock = () => api.post('/products/sync-stock');
 
 // Transactions API
 export const getTransactions = () => api.get('/transactions');

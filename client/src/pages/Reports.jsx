@@ -70,12 +70,12 @@ function Reports() {
                 if (filters.name && !p.name.toLowerCase().includes(filters.name.toLowerCase())) return false;
                 if (filters.size && p.size !== filters.size) return false;
                 if (filters.type && p.type !== filters.type) return false;
-                if (filters.party && (p.party?._id || p.party) !== filters.party) return false;
+                if (filters.party && (p.party?._id || p.party)?.toString() !== filters.party.toString()) return false;
                 if (filters.weight && String(p.weight) !== filters.weight) return false;
                 return true;
             })
             .map(product => {
-                const productTransactions = transactions.filter(t => t.product?._id === product._id || t.product === product._id);
+                const productTransactions = transactions.filter(t => (t.product?._id || t.product)?.toString() === product._id.toString());
 
                 const beforeRange = productTransactions.filter(t => new Date(t.date) < start);
                 const inRange = productTransactions.filter(t => {
@@ -98,7 +98,8 @@ function Reports() {
                     .filter(t => t.type === 'delivered' && (!filters.transactionType || filters.transactionType === 'delivered'))
                     .reduce((acc, t) => acc + (Number(t.quantityInPcs) || 0), 0);
 
-                const remainingPcs = initialPcs + producedPcs - deliveredPcs;
+                let remainingPcs = initialPcs + producedPcs - deliveredPcs;
+                if (remainingPcs < 0) remainingPcs = 0; // Clamp to match dashboard behavior
 
 
                 const toUnit = (pcs) => {
@@ -415,6 +416,25 @@ function Reports() {
                             </div>
 
                             <div className="p-6 pt-5 space-y-6">
+                                {/* OPENING TOTAL */}
+                                <div className="space-y-2">
+                                    <h4 className="flex items-center gap-2 text-[11px] font-black text-blue-400/90 uppercase tracking-wider">Total Opening Stock</h4>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-blue-400/10 p-3 rounded-lg text-center border border-blue-400/20">
+                                            <div className="text-lg font-black text-blue-400 leading-none">{totals.initial.linear.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-blue-400/60 uppercase tracking-tighter mt-1.5">Linear</div>
+                                        </div>
+                                        <div className="bg-blue-400/10 p-3 rounded-lg text-center border border-blue-400/20">
+                                            <div className="text-lg font-black text-blue-400 leading-none">{totals.initial.packets.toFixed(1)}</div>
+                                            <div className="text-[10px] font-bold text-blue-400/60 uppercase tracking-tighter mt-1.5">Packets</div>
+                                        </div>
+                                        <div className="bg-blue-400/10 p-3 rounded-lg text-center border border-blue-400/20">
+                                            <div className="text-lg font-black text-blue-400 leading-none">{totals.initial.pcs.toFixed(0)}</div>
+                                            <div className="text-[10px] font-bold text-blue-400/60 uppercase tracking-tighter mt-1.5">Pcs</div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* PRODUCED TOTAL */}
                                 <div className="space-y-2">
                                     <h4 className="flex items-center gap-2 text-[11px] font-black text-green-400/90 uppercase tracking-wider">Total Produced</h4>

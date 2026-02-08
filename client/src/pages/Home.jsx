@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDashboard, getParties, getTransactions } from '../services/api';
+import { getDashboard, getParties, getTransactions, syncStock } from '../services/api';
 
 import Pagination from '../components/Pagination';
 
@@ -22,6 +22,7 @@ const toCounts = (product) => {
 function Home() {
   const [dashboardData, setDashboardData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [parties, setParties] = useState([]);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
@@ -107,6 +108,20 @@ function Home() {
     }
   };
 
+  const handleSync = async () => {
+    try {
+      setSyncing(true);
+      const res = await syncStock();
+      alert(res.data.message || 'Stock synchronized successfully!');
+      loadDashboard();
+    } catch (err) {
+      console.error('Sync failed:', err);
+      alert('Failed to sync stock. Please try again.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleViewDetails = async (product) => {
     try {
       setSelectedProduct(product);
@@ -119,7 +134,7 @@ function Home() {
         t.productName === product.name &&
         t.size === product.size &&
         (t.productType || 'PPF TF') === (product.type || 'PPF TF') &&
-        (t.party?._id || t.party || null) === (product.party?._id || product.party || null) &&
+        (t.party?._id || t.party || '').toString() === (product.party?._id || product.party || '').toString() &&
         (t.product?.weight || 0) === (product.weight || 0)
       ).sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -156,9 +171,24 @@ function Home() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-center bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 mt-1">Real-time inventory monitoring and analysis</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-500 mt-1">Real-time inventory monitoring and analysis</p>
+          </div>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className={`ml-4 px-6 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 shadow-sm ${syncing
+              ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              : 'bg-[#0081BC] text-white hover:bg-[#006ca0] active:scale-95'
+              }`}
+          >
+            <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {syncing ? 'SYNCING...' : 'SYNC STOCK'}
+          </button>
         </div>
         <div className="mt-4 md:mt-0 flex items-center space-x-2">
           <span className="flex h-3 w-3 relative">
@@ -456,21 +486,11 @@ function Home() {
                               </td>
                               <td className="px-6 py-4">
                                 <div className={`text-sm font-black ${t.type === 'produce' ? 'text-green-600' : 'text-red-600'}`}>
+                                  {/* Show exactly what was entered (LINEAR, PACKETS, or PCS) */}
                                   {(() => {
-                                    // Calculate linear based on unit
-                                    let val = Number(t.quantity);
-                                    // Factors from selectedProduct
-                                    const ppL = Number(selectedProduct.packetsPerLinear) || 0;
-                                    const ppP = Number(selectedProduct.pcsPerPacket) || 0;
-
-                                    if (ppL > 0 && ppP > 0) {
-                                      if (t.unit === 'packet') val = val / ppL;
-                                      else if (t.unit === 'pcs') val = val / (ppL * ppP);
-                                      // if linear, val is already correct
-                                      return `${t.type === 'produce' ? '+' : '-'}${val.toFixed(1)} LINEAR`;
-                                    }
-                                    // Fallback if no factors
-                                    return `${t.type === 'produce' ? '+' : '-'}${t.quantity} ${t.unit?.toUpperCase() || 'PCS'}`;
+                                    const val = Number(t.quantity) || 0;
+                                    const unit = (t.unit || 'pcs').toUpperCase();
+                                    return `${t.type === 'produce' ? '+' : '-'}${val.toLocaleString()} ${unit}`;
                                   })()}
                                 </div>
                               </td>

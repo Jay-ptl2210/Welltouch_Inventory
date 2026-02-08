@@ -260,6 +260,46 @@ router.put('/:id', protect, async (req, res) => {
   }
 });
 
+// @desc    Sync all products' stock with transaction history
+// @route   POST /api/products/sync-stock
+// @access  Private
+router.post('/sync-stock', protect, async (req, res) => {
+  try {
+    const products = await Product.find({});
+    let syncCount = 0;
+
+    for (const product of products) {
+      const txs = await Transaction.find({ product: product._id });
+
+      let produced = 0;
+      let delivered = 0;
+
+      txs.forEach(tx => {
+        if (tx.type === 'produce') {
+          produced += (tx.quantityInPcs || 0);
+        } else if (tx.type === 'delivered') {
+          delivered += (tx.quantityInPcs || 0);
+        }
+      });
+
+      const openingStock = product.previousStock || 0;
+      const newQuantity = openingStock + produced - delivered;
+      const clampedQuantity = newQuantity < 0 ? 0 : newQuantity;
+
+      if (product.quantity !== clampedQuantity) {
+        product.quantity = clampedQuantity;
+        await product.save();
+        syncCount++;
+      }
+    }
+
+    res.json({ success: true, message: `Sync complete. ${syncCount} products updated.`, syncCount });
+  } catch (error) {
+    console.error('Manual sync failed:', error);
+    res.status(500).json({ error: 'Stock synchronization failed' });
+  }
+});
+
 // @desc    Delete product
 // @route   DELETE /api/products/:id
 // @access  Private

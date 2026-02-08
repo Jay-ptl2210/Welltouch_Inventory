@@ -145,14 +145,6 @@ function Input() {
         currentPage * pageSize
     );
 
-    const getLinearValue = (t) => {
-        const p = products.find(prod => prod._id === (t.product?._id || t.product));
-        if (p && p.packetsPerLinear > 0 && p.pcsPerPacket > 0) {
-            return fromPcs(t.quantityInPcs, 'linear', p);
-        }
-        if (t.unit === 'linear') return t.quantity;
-        return null;
-    };
 
     return (
         <div className="container mx-auto px-4 py-8 space-y-8">
@@ -322,11 +314,9 @@ function Input() {
                                     <td className="px-6 py-4 text-xs font-medium text-gray-500 uppercase">{t.productType}</td>
                                     <td className="px-6 py-4 text-sm font-extrabold text-green-700">
                                         {(() => {
-                                            const linear = getLinearValue(t);
-                                            if (linear !== null) {
-                                                return `+${linear.toFixed(1)} LINEAR`;
-                                            }
-                                            return `+${t.quantity} ${t.unit}`;
+                                            const val = Number(t.quantity) || 0;
+                                            const unit = (t.unit || 'pcs').toUpperCase();
+                                            return `+${val.toLocaleString()} ${unit}`;
                                         })()}
                                     </td>
                                     <td className="px-6 py-4 text-xs text-gray-400 italic line-clamp-1">{t.note || '-'}</td>

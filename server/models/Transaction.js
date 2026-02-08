@@ -64,6 +64,11 @@ const transactionSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  challanId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Challan',
+    required: false
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
