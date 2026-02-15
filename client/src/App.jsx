@@ -20,6 +20,124 @@ import UserManagement from './pages/UserManagement';
 
 import logo from './assets/logo.png';
 
+const NavLink = ({ to, children, active, mobile, onClick }) => (
+  <Link
+    to={to}
+    onClick={onClick}
+    className={`${mobile
+      ? `block px-3 py-2 rounded-md text-base font-medium ${active ? 'bg-primary-600 text-white' : 'text-gray-700 hover:bg-primary-100'}`
+      : `px-3 py-2 rounded-md text-sm font-medium ${active ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'}`
+      }`}
+  >
+    {children}
+  </Link>
+);
+
+const NavDropdown = ({ label, items, user, activePath }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const visibleItems = items.filter(item =>
+    !item.permission || user?.role === 'super_user' || user?.permissions?.[item.permission] !== 'none'
+  );
+
+  if (visibleItems.length === 0) return null;
+
+  const isAnyActive = visibleItems.some(item => activePath === item.path);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`px-3 py-2 rounded-md text-sm font-medium flex items-center gap-1 transition-all ${isAnyActive
+          ? 'bg-primary-600 text-white'
+          : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
+          }`}
+      >
+        {label}
+        <svg className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5 z-50">
+          {visibleItems.map((item, idx) => (
+            <Link
+              key={idx}
+              to={item.path}
+              onClick={() => setIsOpen(false)}
+              className={`block px-4 py-2 text-sm ${activePath === item.path
+                ? 'bg-primary-50 text-primary-600 font-bold'
+                : 'text-gray-700 hover:bg-gray-100'
+                }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const MobileNavDropdown = ({ label, items, user, activePath, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const visibleItems = items.filter(item =>
+    !item.permission || user?.role === 'super_user' || user?.permissions?.[item.permission] !== 'none'
+  );
+
+  if (visibleItems.length === 0) return null;
+
+  const isAnyActive = visibleItems.some(item => activePath === item.path);
+
+  return (
+    <div className="mb-2">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-base font-medium transition-colors ${isAnyActive
+          ? 'bg-primary-50 text-primary-600'
+          : 'text-gray-700 hover:bg-gray-100'
+          }`}
+      >
+        <span>{label}</span>
+        <svg className={`w-5 h-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="ml-4 mt-1 space-y-1">
+          {visibleItems.map((item, idx) => (
+            <Link
+              key={idx}
+              to={item.path}
+              onClick={onSelect}
+              className={`block px-3 py-2 rounded-md text-sm font-medium ${activePath === item.path
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-600 hover:bg-gray-50'
+                }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 function Navigation() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -57,6 +175,24 @@ function Navigation() {
     return null;
   }
 
+  const dashboardItems = [
+    { label: 'Dashboard', path: '/', permission: 'dashboard' },
+    { label: 'Transactions', path: '/manage-products', permission: 'transactions' },
+    { label: 'Report', path: '/reports', permission: 'reports' },
+    { label: 'Delivery Report', path: '/delivery-report', permission: 'deliveryReport' }
+  ];
+
+  const manufacturingItems = [
+    { label: 'Production', path: '/input', permission: 'production' },
+    { label: 'Challan', path: '/challan', permission: 'challan' },
+    { label: 'Delivery', path: '/output', permission: 'delivery' }
+  ];
+
+  const contactItems = [
+    { label: 'Party & Customer', path: '/entities', permission: 'entities' },
+    { label: 'Transport', path: '/transports', permission: 'transports' }
+  ];
+
   return (
     <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
@@ -68,127 +204,19 @@ function Navigation() {
             </Link>
           </div>
           <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-4">
-              {(user?.role === 'super_user' || user?.permissions?.dashboard !== 'none') && (
-                <Link
-                  to="/"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Dashboard
-                </Link>
-              )}
-              {(user?.role === 'super_user' || user?.permissions?.production !== 'none') && (
-                <Link
-                  to="/input"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/input')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Production
-                </Link>
-              )}
-              {(user?.role === 'super_user' || user?.permissions?.challan !== 'none') && (
-                <Link
-                  to="/challan"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/challan')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Challan
-                </Link>
-              )}
+            <div className="ml-10 flex items-center space-x-2">
+              <NavDropdown label="Dashboard" items={dashboardItems} user={user} activePath={location.pathname} />
+
               {(user?.role === 'super_user' || user?.permissions?.products !== 'none') && (
-                <Link
-                  to="/products"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/products')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Products
-                </Link>
+                <NavLink to="/products" active={isActive('/products')}>Inventory</NavLink>
               )}
-              {(user?.role === 'super_user' || user?.permissions?.delivery !== 'none') && (
-                <Link
-                  to="/output"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/output')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Delivery
-                </Link>
-              )}
-              {(user?.role === 'super_user' || user?.permissions?.transactions !== 'none') && (
-                <Link
-                  to="/manage-products"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/manage-products')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Transactions
-                </Link>
-              )}
-              {(user?.role === 'super_user' || user?.permissions?.reports !== 'none') && (
-                <Link
-                  to="/reports"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/reports')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Report
-                </Link>
-              )}
-              {(user?.role === 'super_user' || user?.permissions?.deliveryReport !== 'none') && (
-                <Link
-                  to="/delivery-report"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/delivery-report')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Delivery Report
-                </Link>
-              )}
-              {(user?.role === 'super_user' || user?.permissions?.entities !== 'none') && (
-                <Link
-                  to="/entities"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/entities')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Party & Customer
-                </Link>
-              )}
-              {(user?.role === 'super_user' || user?.permissions?.transports !== 'none') && (
-                <Link
-                  to="/transports"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/transports')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Transport
-                </Link>
-              )}
+
+              <NavDropdown label="Manufacturing" items={manufacturingItems} user={user} activePath={location.pathname} />
+
+              <NavDropdown label="Contacts" items={contactItems} user={user} activePath={location.pathname} />
+
               {user?.role === 'super_user' && (
-                <Link
-                  to="/users"
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${isActive('/users')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-600 hover:bg-primary-50 hover:text-primary-600'
-                    }`}
-                >
-                  Users
-                </Link>
+                <NavLink to="/users" active={isActive('/users')}>User</NavLink>
               )}
 
               <div className="relative ml-3" ref={userMenuRef}>
@@ -234,135 +262,53 @@ function Navigation() {
           </div>
         </div>
       </div>
-      {
-        mobileMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t">
-              <Link
-                to="/"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Dashboard
-              </Link>
-              <Link
-                to="/input"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/input')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Production
-              </Link>
-              <Link
-                to="/challan"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/challan')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Challan
-              </Link>
-              <Link
-                to="/products"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/products')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Products
-              </Link>
-              <Link
-                to="/output"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/output')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Delivery
-              </Link>
-              <Link
-                to="/manage-products"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/manage-products')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Transactions
-              </Link>
-              <Link
-                to="/reports"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/reports')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Report
-              </Link>
-              <Link
-                to="/delivery-report"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/delivery-report')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Delivery Report
-              </Link>
-              <Link
-                to="/entities"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/entities')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Party & Customer
-              </Link>
-              <Link
-                to="/transports"
-                onClick={() => setMobileMenuOpen(false)}
-                className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/transports')
-                  ? 'bg-primary-600 text-white'
-                  : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                  }`}
-              >
-                Transport
-              </Link>
-              {user?.role === 'super_user' && (
-                <Link
-                  to="/users"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`block px-3 py-2 rounded-md text-base font-medium ${isActive('/users')
-                    ? 'bg-primary-600 text-white'
-                    : 'text-gray-700 hover:bg-primary-100 hover:text-primary-700'
-                    }`}
-                >
-                  Users
-                </Link>
-              )}
-              <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
-                {user?.email}
-              </div>
-              <button
-                onClick={handleLogout}
-                className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
-              >
-                Logout
-              </button>
+      {mobileMenuOpen && (
+        <div className="md:hidden">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t max-h-[80vh] overflow-y-auto">
+            <MobileNavDropdown
+              label="Dashboard"
+              items={dashboardItems}
+              user={user}
+              activePath={location.pathname}
+              onSelect={() => setMobileMenuOpen(false)}
+            />
+
+            {(user?.role === 'super_user' || user?.permissions?.products !== 'none') && (
+              <NavLink to="/products" mobile active={isActive('/products')} onClick={() => setMobileMenuOpen(false)}>Inventory</NavLink>
+            )}
+
+            <MobileNavDropdown
+              label="Manufacturing"
+              items={manufacturingItems}
+              user={user}
+              activePath={location.pathname}
+              onSelect={() => setMobileMenuOpen(false)}
+            />
+
+            <MobileNavDropdown
+              label="Contacts"
+              items={contactItems}
+              user={user}
+              activePath={location.pathname}
+              onSelect={() => setMobileMenuOpen(false)}
+            />
+
+            {user?.role === 'super_user' && (
+              <NavLink to="/users" mobile active={isActive('/users')} onClick={() => setMobileMenuOpen(false)}>User Management</NavLink>
+            )}
+
+            <div className="px-3 py-2 text-sm text-gray-500 border-t mt-2 pt-2">
+              {user?.email}
             </div>
+            <button
+              onClick={handleLogout}
+              className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:bg-red-50"
+            >
+              Logout
+            </button>
           </div>
-        )
-      }
+        </div>
+      )}
     </nav >
   );
 }
