@@ -73,6 +73,7 @@ function DeliveryReport() {
                 date: c.date,
                 transport: tName,
                 vehicle: vNum,
+                customer: c.customer?.name || 'Unknown',
                 destination: dest,
                 items: c.items || [],
                 itemSummary: itemSummary,
@@ -167,7 +168,7 @@ function DeliveryReport() {
                     vehicle.number,
                     vehicle.tripsCount.toString(),
                     destinations,
-                    format(new Date(vehicle.lastDate), 'dd-MM-yyyy')
+                    vehicle.lastDate ? format(new Date(vehicle.lastDate), 'dd-MM-yyyy') : '-'
                 ]);
             });
         });
@@ -443,7 +444,7 @@ function DeliveryReport() {
                                                 <div className="space-y-2">
                                                     <p className="text-sky-400 text-[8px] font-black uppercase tracking-widest">Main Destinations</p>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {Object.entries(vehicle.destinations).slice(0, 3).map(([d, c], i) => (
+                                                        {Object.entries(vehicle.destinations).map(([d, c], i) => (
                                                             <span key={i} className="text-[10px] font-bold bg-sky-50 text-sky-700 px-3 py-1 rounded-full border border-sky-100">
                                                                 {d} ({c})
                                                             </span>
