@@ -11,17 +11,51 @@ const { protect } = require('../middleware/auth');
 router.post('/', protect, async (req, res) => {
     try {
         // Generate sequential challan number
-        const lastChallan = await Challan.findOne({}).sort({ createdAt: -1 });
         let nextNumber = 1;
+        let challanNumber = '';
+        
+        const challanDate = req.body.date ? new Date(req.body.date) : new Date();
+        const isNewFinancialSystem = (challanDate.getFullYear() > 2026) || (challanDate.getFullYear() === 2026 && challanDate.getMonth() >= 3);
 
-        if (lastChallan && lastChallan.challanNumber) {
-            const lastNumMatch = lastChallan.challanNumber.match(/\d+/);
-            if (lastNumMatch) {
-                nextNumber = parseInt(lastNumMatch[0]) + 1;
+        if (isNewFinancialSystem) {
+            const year = challanDate.getFullYear();
+            const month = challanDate.getMonth();
+            let startYear, endYear;
+            if (month >= 3) {
+                startYear = year;
+                endYear = year + 1;
+            } else {
+                startYear = year - 1;
+                endYear = year;
             }
-        }
+            const prefix = `ch_${startYear.toString().slice(-2)}-${endYear.toString().slice(-2)}_`;
 
-        const challanNumber = `CH${String(nextNumber).padStart(3, '0')}`;
+            const lastChallan = await Challan.findOne(
+                { challanNumber: { $regex: new RegExp(`^${prefix}`, 'i') } }
+            ).sort({ createdAt: -1 });
+
+            if (lastChallan && lastChallan.challanNumber) {
+                const parts = lastChallan.challanNumber.split('_');
+                const lastNumStr = parts[parts.length - 1];
+                const parsedNumber = parseInt(lastNumStr, 10);
+                if (!isNaN(parsedNumber)) {
+                    nextNumber = parsedNumber + 1;
+                }
+            }
+            challanNumber = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+        } else {
+            const lastChallan = await Challan.findOne(
+                { challanNumber: { $not: /_/ } }
+            ).sort({ createdAt: -1 });
+
+            if (lastChallan && lastChallan.challanNumber) {
+                const lastNumMatch = lastChallan.challanNumber.match(/\d+/);
+                if (lastNumMatch) {
+                    nextNumber = parseInt(lastNumMatch[0]) + 1;
+                }
+            }
+            challanNumber = `CH${String(nextNumber).padStart(3, '0')}`;
+        }
 
         const challan = await Challan.create({
             ...req.body,
