@@ -28,21 +28,23 @@ router.post('/', protect, async (req, res) => {
                 startYear = year - 1;
                 endYear = year;
             }
-            const prefix = `ch_${startYear.toString().slice(-2)}-${endYear.toString().slice(-2)}_`;
+            const yearSuffix = `${startYear.toString().slice(-2)}-${endYear.toString().slice(-2)}`;
+            const suffixRegex = `/${yearSuffix}$`;
 
             const lastChallan = await Challan.findOne(
-                { challanNumber: { $regex: new RegExp(`^${prefix}`, 'i') } }
+                { challanNumber: { $regex: new RegExp(`^WT\\d+${suffixRegex}`, 'i') } }
             ).sort({ createdAt: -1 });
 
             if (lastChallan && lastChallan.challanNumber) {
-                const parts = lastChallan.challanNumber.split('_');
-                const lastNumStr = parts[parts.length - 1];
-                const parsedNumber = parseInt(lastNumStr, 10);
-                if (!isNaN(parsedNumber)) {
-                    nextNumber = parsedNumber + 1;
+                const match = lastChallan.challanNumber.match(/^WT(\d+)\//i);
+                if (match && match[1]) {
+                    const parsedNumber = parseInt(match[1], 10);
+                    if (!isNaN(parsedNumber)) {
+                        nextNumber = parsedNumber + 1;
+                    }
                 }
             }
-            challanNumber = `${prefix}${String(nextNumber).padStart(3, '0')}`;
+            challanNumber = `WT${String(nextNumber).padStart(3, '0')}/${yearSuffix}`;
         } else {
             const lastChallan = await Challan.findOne(
                 { challanNumber: { $not: /_/ } }
